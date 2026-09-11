@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<!--
+  AUTO-GENERATED FILE — DO NOT EDIT DIRECTLY.
+  This is a minified/mangled build of src/admin.html, produced by
+  .github/workflows/build-obfuscated.yml on every push to src/admin.html.
+  Edit src/admin.html instead — this file will be regenerated automatically.
+-->
+
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<!-- Telegram WebView любит агрессивно кэшировать Mini App — без этих
+     заголовков после каждого обновления страницы приходится закрывать и
+     заново открывать приложение, чтобы увидеть новую версию. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>БАТТЛ — Админ-панель</title>
+<style>
+  /* Утилитарный интерфейс инструмента, а не витрины: системный шрифт вместо
+     брендовых Bebas Neue/Inter, некрупный единый радиус вместо скруглений
+     "в таблетку", один плоский акцентный цвет вместо золота с градиентами.
+     --gold/--live имена переменных оставлены как есть (их много где
+     используют), поменялись только значения и то, как их применяют. */
+  :root{
+    --bg: #0B0B0D;
+    --panel: #17171B;
+    --panel-2: #1F1F24;
+    --line: #2A2A30;
+    --text: #F2F1EE;
+    --muted: #8A8A92;
+    --live: #E5493D;
+    --gold: #4C82F7;
+    --radius: 5px;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; min-height:100%; -webkit-font-smoothing:antialiased; }
+  body{ display:flex; justify-content:center; padding:16px 0 40px; }
+  .wrap{ width:100%; max-width:460px; padding:0 16px; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .brand{ font-size:15px; font-weight:700; }
+  .brand span{ color:var(--live); }
+  .me{ font-size:11px; color:var(--muted); text-align:right; line-height:1.4; }
+  .me b{ color:var(--text); font-weight:600; }
+
+  /* flex-wrap вместо overflow-x:auto — на узких экранах вкладки не всегда
+     помещаются в одну строку (особенно с учётом того, что часть из них
+     скрыта в зависимости от прав, а видимый набор меняется), и крутить
+     вбок в поисках нужной — раздражает и отвлекает. Перенос на вторую
+     строку сразу показывает все доступные вкладки целиком. */
+  .tabs{ display:flex; flex-wrap:wrap; gap:4px 2px; border-bottom:1px solid var(--line); margin-bottom:16px; }
+  .tab{ padding:8px 9px; font-size:12px; font-weight:600; cursor:pointer; color:var(--muted); user-select:none; border-bottom:2px solid transparent; white-space:nowrap; }
+  .tab.active{ color:var(--text); border-bottom-color:var(--gold); }
+
+  .screen{ display:none; }
+  .screen.active{ display:block; }
+
+  /* вкладки внутри экрана #screen-app — отдельный класс, чтобы верхнеуровневый
+     showScreen() (который снимает .active со всех .screen) их не задевал */
+  .subview{ display:none; }
+  .subview.active{ display:block; }
+
+  /* ===== десктоп: тот же брейкпоинт и та же логика, что и в игре
+     (index.html) — реальные мобильные экраны и Telegram WebView никогда не
+     достигают такой ширины, так что мобильная раскладка ниже не
+     затрагивается вообще. Вкладки .tabs становятся вертикальным меню
+     слева, .subview (их всего одна видна за раз через .active) занимает
+     правую колонку той же CSS-грид — оборачивать все .subview в общий
+     контейнер не нужно, грид расставляет прямых детей #screen-app сам. */
+  @media (min-width: 900px){
+    .wrap{ max-width:1100px; }
+    #screen-app.active{ display:grid; grid-template-columns:220px 1fr; align-items:start; gap:28px; }
+    .tabs{ flex-direction:column; flex-wrap:nowrap; border-bottom:none; border-right:1px solid var(--line); padding-right:14px; margin-bottom:0; position:sticky; top:16px; }
+    .tab{ border-bottom:none; border-left:2px solid transparent; border-radius:0 var(--radius) var(--radius) 0; padding:10px 12px; }
+    .tab.active{ border-bottom-color:transparent; border-left-color:var(--gold); background:var(--panel); }
+    .subview{ grid-column:2; }
+  }
+
+  .center-msg{ min-height:60vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:32px 12px; }
+  .center-msg .big{ font-size:18px; font-weight:700; margin-bottom:10px; }
+  .center-msg .small{ color:var(--muted); font-size:13.5px; line-height:1.5; max-width:280px; }
+  .center-msg.denied .big{ color:var(--live); }
+
+  .section-label{ font-size:11px; letter-spacing:0.3px; text-transform:uppercase; color:var(--muted); margin:18px 0 10px; }
+  .section-label:first-child{ margin-top:0; }
+
+  /* карточка-раздел — вместо простой линии-разделителя между блоками
+     настроек: явная рамка сразу показывает, где кончается один раздел
+     и начинается следующий, вместо сплошной ленты одинаковых полей */
+  .admin-card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:12px; }
+  .admin-card .section-label{ margin-top:0; }
+  .admin-card.live{ border-color:var(--live); }
+
+  .brand-version{ font-size:10px; font-weight:500; color:var(--muted); margin-left:6px; vertical-align:middle; }
+
+  .admin-search{ display:flex; gap:8px; margin-bottom:14px; }
+  .admin-search input{ flex:1; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:10px 12px; color:var(--text); font-size:14px; min-width:0; }
+  .admin-search input::placeholder{ color:var(--muted); }
+  .admin-search button{ background:var(--gold); color:#fff; border:none; border-radius:var(--radius); padding:0 16px; font-size:13px; font-weight:600; cursor:pointer; }
+
+  button{ font-family:inherit; }
+
+  .list-toggle{ width:100%; margin-bottom:16px; background:var(--panel); border:1px solid var(--line); color:var(--text); border-radius:var(--radius); padding:11px 12px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
+  .count-badge{ display:inline-flex; min-width:22px; height:20px; padding:0 6px; align-items:center; justify-content:center; border-radius:var(--radius); background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:11px; margin-left:9px; }
+  .chevron{ font-size:16px; transition:transform .18s ease; }
+
+  .admin-empty{ text-align:center; color:var(--muted); font-size:13px; padding:20px 0; }
+
+  /* ===== "База" — дерево Firebase RTDB ===== */
+  .db-tree{ font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size:12px; line-height:1.7; overflow-x:auto; }
+  .db-node{ display:flex; align-items:flex-start; gap:5px; padding:2px 5px; border-radius:4px; white-space:nowrap; }
+  .db-node.container{ cursor:pointer; }
+  .db-node.container:hover{ background:var(--panel-2); }
+  .db-node .db-toggle{ width:12px; flex-shrink:0; color:var(--muted); }
+  .db-node .db-key{ color:var(--gold); flex-shrink:0; }
+  .db-node .db-count{ color:var(--muted); flex-shrink:0; }
+  .db-node .db-val{ color:var(--text); white-space:pre-wrap; word-break:break-all; }
+  .db-node .db-val.str{ color:#CE9178; }
+  .db-node .db-val.num{ color:#B5CEA8; }
+  .db-node .db-val.bool{ color:#569CD6; }
+  .db-node .db-val.null{ color:var(--muted); font-style:italic; }
+  .db-children{ margin-left:15px; border-left:1px solid var(--line); padding-left:6px; }
+  @keyframes dbFlash{
+    0%{ background:rgba(62,213,152,0.4); }
+    100%{ background:transparent; }
+  }
+  .db-node.flash{ animation:dbFlash 1000ms ease-out; }
+
+  .user-row{ display:flex; align-items:center; gap:12px; padding:9px 11px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); cursor:pointer; margin-bottom:6px; }
+  .user-row .u-avatar{ width:32px; height:32px; border-radius:50%; background:var(--panel-2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0; position:relative; background-size:cover; background-position:center; }
+  .user-row .u-online-dot{ position:absolute; bottom:-1px; right:-1px; width:9px; height:9px; border-radius:50%; background:#3ED598; border:2px solid var(--panel); display:none; }
+  .user-row.online .u-online-dot{ display:block; }
+  .user-row .u-info{ flex:1; min-width:0; }
+  .user-row .u-name{ font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .user-row .u-id{ font-size:11.5px; color:var(--muted); }
+  .u-role-badge{ font-size:10px; letter-spacing:0.3px; text-transform:uppercase; padding:2px 6px; border-radius:var(--radius); flex-shrink:0; }
+  .u-role-badge.role-user{ background:var(--panel-2); color:var(--muted); }
+  .u-role-badge.role-moderator{ background:rgba(108,124,255,0.15); color:#6C7CFF; }
+  .u-role-badge.role-admin{ background:rgba(229,73,61,0.15); color:var(--live); }
+  .u-role-badge.role-superadmin{ background:rgba(76,130,247,0.15); color:var(--gold); }
+
+  .badge{ display:inline-block; font-size:10px; letter-spacing:0.3px; text-transform:uppercase; padding:2px 6px; border-radius:var(--radius); }
+  .badge.live{ background:rgba(229,73,61,0.15); color:var(--live); }
+
+  .badge-pill{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; padding:5px 10px; border-radius:var(--radius); background:var(--panel-2); border:1px solid var(--line); }
+  .badge-pill .emoji{ font-size:15px; line-height:1; }
+  .badge-pill.awarded{ border-color: var(--gold); background: rgba(76,130,247,0.1); }
+  .badge-pill.pick{ cursor:pointer; background:var(--panel-2); }
+  .badge-pill.pick.on{ border-color: var(--gold); background: rgba(76,130,247,0.15); color: var(--gold); }
+  .badge-pill .remove{ opacity:0.6; font-weight:700; }
+
+  .admin-result{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px; display:none; margin-top:4px; }
+  .admin-result .r-avatar{ width:48px; height:48px; border-radius:50%; background:var(--panel-2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; margin-bottom:12px; background-size:cover; background-position:center; }
+  .admin-result .r-name{ font-size:15px; font-weight:700; margin-bottom:2px; }
+  .admin-result .r-id{ font-size:12.5px; color:var(--muted); margin-bottom:14px; }
+  .r-toggle-row{ display:flex; flex-direction:column; align-items:stretch; gap:10px; padding-top:12px; border-top:1px solid var(--line); }
+  .r-toggle-label{ font-size:13px; font-weight:600; }
+  .token-reveal{ font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size:13px; background:var(--panel-2); border:1px solid var(--gold); border-radius:var(--radius); padding:10px; word-break:break-all; user-select:all; margin:8px 0; }
+
+  .stat-field{ font-size:11px; color:var(--muted); }
+  .stat-field input{ width:100%; box-sizing:border-box; margin-top:4px; background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px; color:var(--text); }
+
+  .btn{ border:none; border-radius:var(--radius); padding:10px; font-size:13px; font-weight:600; cursor:pointer; }
+  .btn-gold{ background:var(--gold); color:#fff; }
+  .btn-line{ background:var(--panel-2); border:1px solid var(--line); color:var(--text); }
+  .btn-live{ background:var(--live); color:#fff; }
+
+  .log-row{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:11px 13px; margin-bottom:7px; }
+  .log-row .l-title{ font-size:13px; font-weight:600; margin-bottom:3px; }
+  .log-row .l-body{ font-size:12px; color:var(--muted); line-height:1.5; }
+  .log-row .l-time{ font-size:11px; color:var(--muted); margin-top:4px; }
+
+  .back-link{ display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:12.5px; cursor:pointer; margin-bottom:12px; }
+
+  .field-label{ font-size:12px; color:var(--muted); margin-bottom:5px; display:block; }
+  .field-input{ width:100%; box-sizing:border-box; background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px 11px; color:var(--text); font-size:13.5px; resize:vertical; }
+  .field-block{ margin-bottom:14px; }
+  .event-preview{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; margin-bottom:16px; }
+  .event-preview img{ width:100%; height:110px; object-fit:cover; display:block; background:var(--panel-2); }
+  .event-preview .ep-empty{ height:110px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12.5px; }
+  .event-status{ font-size:12.5px; padding:9px 11px; border-radius:var(--radius); margin-bottom:14px; }
+  .event-status.on{ background:rgba(62,213,152,0.12); color:#3ED598; }
+  .event-status.off{ background:var(--panel-2); color:var(--muted); }
+  .event-admin-row{ display:flex; align-items:center; gap:10px; padding:10px 11px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); cursor:pointer; margin-bottom:7px; }
+  .event-admin-row.editing{ border-color:var(--gold); }
+  .event-admin-row .ea-info{ flex:1; min-width:0; }
+  .event-admin-row .ea-title{ font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .event-admin-row .ea-sub{ font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .event-admin-row .ea-dot{ width:8px; height:8px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+  .event-admin-row.live .ea-dot{ background:#3ED598; }
+
+  /* "Права админов" — по образцу Telegram: список отдельных переключаемых
+     возможностей у конкретного админа, не общий тир */
+  .toggle-row{ display:flex; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid var(--line); cursor:pointer; }
+  .toggle-row:last-child{ border-bottom:none; }
+  .toggle-check{ width:22px; height:22px; border-radius:50%; border:1.5px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; color:transparent; }
+  .toggle-row.on .toggle-check{ background:var(--gold); border-color:var(--gold); color:#fff; }
+  .toggle-row.on .toggle-check::after{ content:'✓'; }
+  .toggle-label{ font-size:14px; }
+
+  /* ===== "Статистика" — плитки-показатели и полосы-бары, портировано из
+     battle-data-admin-bot (там были .card/.stat-tile/.bar-row/.list-row —
+     здесь заведены под местные переменные/паттерн .admin-card) ===== */
+  .stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:4px; }
+  .stat-tile{ background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:12px; }
+  .stat-tile .st-val{ font-size:20px; font-weight:700; line-height:1.2; }
+  .stat-tile .st-label{ font-size:11px; color:var(--muted); margin-top:4px; line-height:1.4; }
+  .bar-row{ display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:6px; }
+  .bar-row .bar-label{ width:120px; flex-shrink:0; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar-row .bar-track{ flex:1; height:8px; background:var(--panel-2); border-radius:4px; overflow:hidden; }
+  .bar-row .bar-fill{ height:100%; background:var(--gold); }
+  .bar-row .bar-count{ width:44px; text-align:right; flex-shrink:0; color:var(--text); }
+  .list-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); font-size:12px; }
+  .list-row:last-child{ border-bottom:none; }
+  .list-row .meta{ color:var(--muted); }
+  .list-row a{ color:var(--gold); text-decoration:none; font-weight:600; }
+
+  /* ===== "Бэкапы"/"Восстановление" — тоже портировано из battle-data-admin-bot ===== */
+  .warn-banner{ background:rgba(229,73,61,.12); border:1px solid var(--live); border-radius:var(--radius); padding:12px; font-size:12px; line-height:1.5; margin-bottom:16px; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .row > *{ flex:1 1 auto; }
+  .status-line{ font-size:12px; margin-top:10px; min-height:16px; }
+  .inline-confirm{ font-size:11px; color:var(--gold); margin-left:8px; opacity:0; transition:opacity .3s; }
+  .inline-confirm.show{ opacity:1; }
+  .token-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .token-row > input{ flex:1 1 220px; }
+  .lock-line{ font-size:12px; color:var(--muted); margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+  /* ===== суб-нав внутри объединённых вкладок (Бэкапы/Восстановление,
+     Журнал/Ошибки, База/Система, Кланы/Заявки) — две кнопки-переключателя
+     тем же .btn, что и везде в файле, активная — btn-gold, неактивная —
+     btn-line, чтобы не заводить отдельный паттерн навигации. */
+  .subnav{ display:flex; gap:8px; margin-bottom:16px; }
+  .subnav .btn{ flex:1; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">БАТТЛ<span>.</span> АДМИН <span class="brand-version" id="admin-version" title="Обнаружение дублирующегося токена устройства теперь пишется в Журнал действий.">v2.2</span></div>
+    <div class="me" id="me-box" style="display:none;">
+      Вошёл как <b id="me-name">—</b><br>
+      <span id="me-role">—</span><br>
+      <a href="#" id="me-logout-link" style="display:none; color:var(--muted); text-decoration:underline;">Выйти</a>
+    </div>
+  </div>
+
+  <div class="screen active" id="screen-loading">
+    <div class="center-msg">
+      <div class="big">Проверяем доступ…</div>
+      <div class="small">Секунду — сверяемся с базой БАТТЛ.</div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-denied">
+    <div class="center-msg denied">
+      <div class="big">ДОСТУП ЗАПРЕЩЁН</div>
+      <div class="small" id="denied-text">У твоего аккаунта нет прав модератора/админа. Роль выдаётся вручную через Firebase Console.</div>
+    </div>
+  </div>
+
+  <!-- открыто не из Telegram — единственный путь внутрь: email, привязанный
+       заранее (во вкладке "Аккаунт" внутри панели ИЛИ прямо в игре,
+       Настройки → Аккаунт — привязка общая, emailLogins/<email> одна база
+       на оба проекта). Никакого письма — вводишь email, заявка на вход
+       уходит владельцу аккаунта, он подтверждает её сам (в игре, Сообщество
+       → Запросы, или прямо тут же — вкладка "Аккаунт", см. JS ниже). -->
+  <div class="screen" id="screen-login">
+    <div class="center-msg">
+      <div class="big">ВХОД В ПАНЕЛЬ</div>
+      <div class="small" style="margin-bottom:18px;">Открыто не из Telegram — впиши email, привязанный во вкладке «Аккаунт» (или прямо в игре, Настройки → Аккаунт) — заявку на вход подтвердишь сам, без пароля и без письма.</div>
+      <input type="email" class="field-input" id="login-email-input" placeholder="твой email" autocomplete="email" style="max-width:260px; margin-bottom:12px; text-align:center;">
+      <button class="btn btn-gold" id="login-submit-btn" style="max-width:260px; width:100%;">Запросить вход</button>
+      <div class="small" id="login-error" style="display:none; color:var(--live); margin-top:10px;"></div>
+      <div class="small" id="login-status" style="display:none; color:var(--gold); margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <!-- аварийный режим (config/emergencyLockdown) — отдельный от "доступ
+       запрещён" экран: тут дело не в роли конкретного человека, закрыта
+       вся панель целиком, включая admin/moderator, кроме superadmin (см.
+       проверку рядом с определением роли в JS ниже) -->
+  <div class="screen" id="screen-emergency">
+    <div class="center-msg denied">
+      <div class="big">🚨 АВАРИЙНЫЙ РЕЖИМ</div>
+      <div class="small">Панель временно закрыта для всех, кроме Супердоступа — что-то пошло не так, и с этим уже разбираются. Доступ вернётся, как только аварийный режим снимут.</div>
+    </div>
+  </div>
+
+  <!-- ===== защита от угона доступа: у каждого admin/superadmin
+       автоматически и молча существует персональный токен аккаунта
+       (users/<uid>/deviceToken — имя поля в базе не меняли, см. блок
+       "Токен аккаунта" в карточке игрока, видимый только Супердоступу).
+       Токен никогда никому не показывают и не просят ввести — ни на
+       первом входе, ни на новом устройстве/браузере. Единственная его
+       роль — проверка, не появился ли этот же токен ещё и на ДРУГОМ
+       аккаунте (см. checkTokenNotDuplicated); если да — блокируются все
+       совпавшие аккаунты (users/<uid>/panelLocked), пока Супердоступ не
+       снимет блокировку вручную (та же карточка). -->
+  <div class="screen" id="screen-device-locked">
+    <div class="center-msg denied">
+      <div class="big">🔒 ДОСТУП ЗАБЛОКИРОВАН</div>
+      <div class="small">Токен аккаунта обнаружен сразу на двух разных аккаунтах — доступ закрыт до ручного сброса Супердоступом.</div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-app">
+
+    <div class="tabs">
+      <div class="tab active" data-tab="panel">Панель</div>
+      <div class="tab" data-tab="account">Аккаунт</div>
+      <div class="tab" data-tab="event">Ивент</div>
+      <!-- "Журнал" объединяет журнал действий ("Действия") и присланные
+           игроками ошибки ("Ошибки клиента") — суб-нав внутри .subview,
+           см. showLogsSection(). Обе части видны всем, у кого вообще есть
+           доступ к панели — так было и раньше у каждой по отдельности. -->
+      <div class="tab" data-tab="logs">Журнал</div>
+      <!-- "Заявки" объединяет модерацию кланов ("Заявки кланов", право
+           clans) и заявки на закрытый бета-тест ("Заявки на бета", право
+           beta) — суб-нав внутри .subview, см. showBetaSection(). Сама
+           вкладка видна, если есть хоть одно из двух прав (объединение);
+           видимость кнопок суб-нава и загрузка контента — по своему
+           условию у каждой части, см. applyRoleUI. -->
+      <div class="tab" data-tab="beta">Заявки</div>
+      <!-- видна всем, у кого вообще есть доступ к панели — отчёт "только
+           для чтения" (см. loadStatsTab), не отдельное переключаемое право -->
+      <div class="tab" data-tab="stats" id="tab-stats">Статистика</div>
+      <!-- сводная таблица прав всех модераторов/админов одним экраном, без
+           захода в карточку каждого по отдельности — тоже только
+           superadmin (см. applyRoleUI/canManageRoles); роль тут не меняют,
+           только делегируемые permissions (см. loadAdminsTab/setAdminPermission) -->
+      <div class="tab" data-tab="admins" id="tab-admins">Администрация</div>
+      <!-- "Бэкапы" объединяет список снимков/"бэкап сейчас" и
+           восстановление — суб-нав внутри .subview, см. showBackupsSection().
+           Обе части были и остаются доступны только superadmin (см.
+           applyRoleUI/canManageRoles), это либо разрушительное действие,
+           либо запись в чужой репозиторий — объединение вкладок тут не
+           меняет эффективный доступ. -->
+      <div class="tab" data-tab="backups" id="tab-backups">Бэкапы</div>
+      <!-- "Система" объединяет опасную зону (обслуживание/сброс/аварийный
+           режим, право danger) и сырой просмотр всей Firebase RTDB
+           деревом ("База данных", только superadmin) — суб-нав внутри
+           .subview, см. showDangerSection(). Вкладка видна, если есть хоть
+           одно из двух прав (canManageDanger() || canManageRoles());
+           кнопка "База данных" суб-нава скрыта не-superadmin (см.
+           applyRoleUI), а "Опасная зона" по-прежнему сама живо
+           перепроверяет role === 'superadmin' на сброс/аварийный режим
+           при каждом открытии (см. openDangerZone). -->
+      <div class="tab" data-tab="danger" id="tab-danger">Система</div>
+    </div>
+
+    <!-- ===== панель управления игроками ===== -->
+    <div class="subview active" data-panel="panel" id="panel-players">
+
+      <div class="section-label">Найти игрока по ID</div>
+      <div class="admin-search">
+        <input type="text" id="admin-search-input" placeholder="PLR-XXXXXX" autocomplete="off">
+        <button id="admin-search-btn">Найти</button>
+      </div>
+
+      <button class="list-toggle" id="btn-toggle-user-list">
+        <span style="display:flex;align-items:center;">СПИСОК ПОЛЬЗОВАТЕЛЕЙ<span class="count-badge" id="user-count-badge">0</span></span>
+        <span class="chevron" id="user-list-chevron">⌄</span>
+      </button>
+      <div id="user-list-wrap" style="display:none;">
+        <div class="section-label" id="user-list-label">Все игроки (0)</div>
+        <div id="user-list"></div>
+      </div>
+
+      <div class="admin-empty" id="admin-empty">Введи ID игрока или разверни список, чтобы посмотреть/изменить доступ</div>
+
+      <div class="admin-result" id="admin-result">
+        <div class="r-avatar" id="r-avatar"></div>
+        <div class="r-name" id="r-name">—</div>
+        <div class="r-id" id="r-id">—</div>
+        <div class="r-id" style="margin-bottom:12px;">Очков: <span id="r-points-val">0</span></div>
+        <div class="r-id" id="r-tickets-line" style="margin-bottom:12px; display:none;">Билеты-множители: <span id="r-tickets-val"></span></div>
+        <div id="r-status-badge" style="margin-bottom:12px;"></div>
+
+        <div class="r-toggle-row">
+          <div class="r-toggle-label">Уровень доступа</div>
+          <div id="role-info"></div>
+          <div id="role-manage-block" style="display:none; flex-wrap:wrap; gap:8px; margin-top:8px;"></div>
+          <button class="btn btn-line" id="btn-open-admin-rights" style="display:none; width:100%; margin-top:10px;">⚙️ Настроить права администратора</button>
+        </div>
+
+        <!-- защита от угона доступа (см. комментарий у #screen-device-locked) —
+             видна только Супердоступу, и только у admin/superadmin -->
+        <div class="r-toggle-row" id="device-token-row" style="display:none;">
+          <div class="r-toggle-label">Токен аккаунта</div>
+          <div id="device-token-status" class="admin-empty" style="padding:4px 0 0;"></div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <button class="btn btn-line" id="btn-device-token-issue" style="flex:1;">Выдать токен доступа</button>
+            <button class="btn btn-line" id="btn-device-token-unlock" style="display:none; flex:1;">Сбросить блокировку</button>
+          </div>
+          <div class="token-reveal" id="device-token-reveal" style="display:none;"></div>
+        </div>
+
+        <div class="r-toggle-row">
+          <div class="r-toggle-label">Значки-награды</div>
+          <div id="user-badges-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          <div id="badge-manage-block" style="display:none; flex-direction:column; gap:8px;">
+            <div id="badge-catalog" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="new-badge-emoji" placeholder="🧪" maxlength="4" style="width:56px; text-align:center; background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px; color:var(--text); font-size:16px;">
+              <input type="text" id="new-badge-label" placeholder="Название значка" style="flex:1; min-width:0; background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px 12px; color:var(--text); font-size:13px;">
+            </div>
+            <button class="btn btn-line" id="btn-create-badge">+ Создать значок</button>
+          </div>
+          <div id="badge-manage-locked-note" class="admin-empty" style="display:none;padding:2px 0;">Создавать и выдавать/снимать значки могут только Админ и Супердоступ</div>
+        </div>
+
+        <div class="r-toggle-row">
+          <div class="r-toggle-label">Корректировка статистики</div>
+          <div id="stats-edit-block" style="display:none; flex-direction:column; gap:8px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <label class="stat-field">Points<input type="number" id="edit-points" min="0"></label>
+              <label class="stat-field">Stars<input type="number" id="edit-stars" min="0"></label>
+              <label class="stat-field">Battles<input type="number" id="edit-battles" min="0"></label>
+              <label class="stat-field">Победы<input type="number" id="edit-wins" min="0"></label>
+              <label class="stat-field">Поражения<input type="number" id="edit-losses" min="0"></label>
+              <label class="stat-field">Ничьи<input type="number" id="edit-draws" min="0"></label>
+              <label class="stat-field">Как рефери<input type="number" id="edit-referee" min="0"></label>
+              <label class="stat-field">Симпатии<input type="number" id="edit-likes" min="0"></label>
+            </div>
+            <button class="btn btn-gold" id="btn-save-stats">СОХРАНИТЬ СТАТИСТИКУ</button>
+          </div>
+          <div id="stats-edit-locked-note" class="admin-empty" style="display:none;padding:2px 0;">Изменять статистику могут только Админ и Супердоступ</div>
+        </div>
+
+        <div class="r-toggle-row">
+          <div class="r-toggle-label">Бан и ограничения</div>
+          <div id="ban-manage-block" style="display:none; flex-direction:column; gap:8px;">
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-line ban-duration-btn" data-hours="1" style="flex:1;">1 час</button>
+              <button class="btn btn-line ban-duration-btn" data-hours="24" style="flex:1;">24 часа</button>
+              <button class="btn btn-line ban-duration-btn" data-hours="168" style="flex:1;">7 дней</button>
+            </div>
+            <button class="btn btn-live" id="btn-ban-forever">Забанить навсегда</button>
+            <button class="btn btn-line" id="btn-unban">Снять бан / ограничение</button>
+          </div>
+          <div id="ban-manage-locked-note" class="admin-empty" style="display:none;padding:2px 0;">Банить и снимать ограничения может только тот, у кого включено это право</div>
+        </div>
+
+        <button class="btn btn-line" id="btn-open-player-history" style="width:100%; margin-top:14px;">📜 История этого игрока</button>
+      </div>
+
+    </div>
+
+    <!-- ===== "Аккаунт" — вход в панель с другого устройства/браузера без
+         Telegram: без пароля и без письма, заявкой на вход, которую
+         подтверждает сам аккаунт (см. loginRequests в JS). Пишет в
+         attachedEmail и emailLogins/<email> — ту же таблицу, что
+         "Войти в свой аккаунт"/"Вход с других устройств" в самой игре
+         (index.html, Настройки → Аккаунт), поэтому один и тот же email
+         работает и там, и здесь без отдельной настройки. -->
+    <div class="subview" data-panel="account" id="panel-account">
+      <div class="admin-card">
+        <div class="section-label">Вход в панель с другого устройства</div>
+        <div class="admin-empty" style="text-align:left; padding:0 0 14px;">
+          По умолчанию в панель можно зайти только через Telegram-бота. Если
+          привязать здесь email, с любого браузера можно будет запросить
+          вход по этому email — заявку подтвердишь сам, ниже или в игре
+          (Сообщество → Запросы). Без пароля и без письма. Тот же email, что
+          уже привязан в игре (если привязывали), сработает и тут —
+          привязывать заново не нужно.
+        </div>
+        <div class="admin-empty" style="text-align:left; padding:0 0 14px;">
+          Статус: <b id="account-email-status">проверяем…</b>
+        </div>
+
+        <div id="account-email-form">
+          <label class="field-label">Email</label>
+          <input type="email" class="field-input" id="account-email-input" placeholder="твой email" autocomplete="email" style="margin-bottom:10px;">
+          <button class="btn btn-gold" id="btn-account-send-link" style="width:100%;">Привязать</button>
+        </div>
+        <div class="admin-empty" id="account-no-telegram-note" style="display:none; text-align:left; padding:0; color:var(--live);">
+          Привязать email можно только при заходе через Telegram-бота — так
+          вход на чужом устройстве не может сам себя перепривязать. Открой
+          панель через бота, чтобы это сделать.
+        </div>
+        <div class="admin-empty" id="account-email-result" style="display:none; margin-top:10px; text-align:left;"></div>
+      </div>
+
+      <div class="admin-card">
+        <div class="section-label">Заявки на вход</div>
+        <div id="account-login-requests-list"></div>
+        <div class="admin-empty" id="account-login-requests-empty" style="display:none;">Нет заявок на вход</div>
+      </div>
+    </div>
+
+    <!-- ===== права конкретного админа — по образцу "Прав админов" в
+         Telegram: не фиксированные тиры (moderator/admin), а отдельные
+         переключаемые возможности у каждого админа. Открывается кнопкой
+         "Настроить права" из карточки игрока (только если у него role
+         "admin" и смотрит superadmin — см. openAdminRights). Супердоступ
+         в этот список не попадает — у него все права всегда, без
+         исключений и без возможности их у него забрать через этот экран. -->
+    <div class="subview" data-panel="admin-rights" id="panel-admin-rights">
+      <div class="back-link" id="admin-rights-back">← Права админов</div>
+      <div style="display:flex; align-items:center; gap:12px; margin:14px 0 20px;">
+        <div class="r-avatar" id="rights-avatar" style="margin-bottom:0; width:48px; height:48px; flex-shrink:0;"></div>
+        <div style="min-width:0;">
+          <div style="font-size:15px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" id="rights-name">—</div>
+          <div style="font-size:12px; color:var(--muted);" id="rights-id">—</div>
+        </div>
+      </div>
+      <div class="section-label">Возможности администратора</div>
+      <div id="admin-rights-toggles"></div>
+      <div class="admin-empty" style="text-align:left; padding:14px 0 0;">
+        Полный сброс и выдача ролей/прав — не сюда, это всегда только у
+        Супердоступа и по отдельности не настраивается.
+      </div>
+    </div>
+
+    <!-- ===== ивент-баннер на главном экране ===== -->
+    <div class="subview" data-panel="event" id="panel-event">
+
+      <div class="section-label" id="events-admin-list-label">Все ивенты (0)</div>
+      <div id="events-admin-list"></div>
+      <div class="admin-empty" id="events-admin-empty" style="display:none;">Ивентов пока нет</div>
+      <button class="btn btn-line" id="btn-event-new" style="width:100%; margin:4px 0 20px;">+ Новый ивент</button>
+
+      <div class="event-status off" id="event-status">Новый ивент — ещё не сохранён</div>
+
+      <div class="section-label">Картинка баннера</div>
+      <div class="event-preview">
+        <img id="event-img-preview" style="display:none;">
+        <div class="ep-empty" id="event-img-empty">Без картинки</div>
+      </div>
+      <input type="file" accept="image/*" id="event-img-input" style="display:none;">
+      <button class="btn btn-line" id="btn-event-pick-img" style="width:100%; margin-bottom:16px;">Загрузить картинку</button>
+
+      <div class="field-block">
+        <label class="field-label">Заголовок</label>
+        <input type="text" class="field-input" id="event-title-input" placeholder="Название ивента" maxlength="60">
+      </div>
+
+      <div class="field-block">
+        <label class="field-label">Описание</label>
+        <textarea class="field-input" id="event-desc-input" rows="3" placeholder="Коротко, о чём анонс" maxlength="240"></textarea>
+      </div>
+
+      <div class="field-block">
+        <label class="field-label">Значок за участие (игрок забирает сам кнопкой на баннере, не начисляется автоматически)</label>
+        <select class="field-input" id="event-badge-select" style="margin-bottom:8px;">
+          <option value="">Без значка</option>
+        </select>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="event-new-badge-emoji" placeholder="🎉" maxlength="4" style="width:56px; text-align:center; background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px; color:var(--text); font-size:16px;">
+          <input type="text" id="event-new-badge-label" placeholder="Название нового значка" style="flex:1; min-width:0; background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px 12px; color:var(--text); font-size:13px;">
+        </div>
+        <button class="btn btn-line" id="btn-event-create-badge" style="width:100%; margin-top:8px;">+ Создать и выбрать значок</button>
+      </div>
+
+      <!-- множитель трофеев — как значок выше, это тоже разовая награда за
+           участие в конкретном ивенте: игрок сам забирает её кнопкой на
+           баннере, но не в коллекцию, а в одноразовый "билет" (см.
+           renderEventMultiplierClaimButton в index.html) — тратится на
+           следующей же победе в рейтинговом бою, умножая награду за неё. -->
+      <div class="field-block">
+        <label class="field-label">Множитель трофеев за участие (тоже забирается кнопкой на баннере — билет на одну победу с наградой x N, дальше сгорает)</label>
+        <select class="field-input" id="event-multiplier-select"></select>
+      </div>
+
+      <!-- ивент-магазин: в отличие от значка и множителя выше, это не
+           бесплатная награда за участие, а платная эксклюзивная рамка для
+           аватара — покупается за Stars, только пока идёт этот ивент (см.
+           renderEventShopFrameButton в index.html). Расцветка/имя пишутся
+           прямо игроку при покупке, поэтому рамка не сломается, даже если
+           потом удалить сам ивент. -->
+      <div class="field-block">
+        <label class="field-label">Ивент-магазин: эксклюзивная рамка для аватара (продаётся за Stars, только пока идёт этот ивент)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="color" id="event-frame-color" value="#F2B705" style="width:44px; height:38px; padding:2px; background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); cursor:pointer;">
+          <input type="text" id="event-frame-name" placeholder="Название рамки" style="flex:1; min-width:0; background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px 12px; color:var(--text); font-size:13px;">
+          <input type="number" id="event-frame-price" placeholder="Цена ⭐" min="1" style="width:84px; background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px; color:var(--text); font-size:13px;">
+        </div>
+        <select class="field-input" id="event-frame-effect" style="margin-top:8px;">
+          <option value="none">Без анимации — просто цвет</option>
+          <option value="pulse">Пульсация — мягкое свечение</option>
+          <option value="rotate">Вращение — кольцо вокруг аватара</option>
+          <option value="spikes">Шипы — выступают за край аватара</option>
+          <option value="flame">Пламя — языки огня вокруг аватара</option>
+          <option value="cosmic">Космос — вращающееся звёздное кольцо</option>
+        </select>
+        <div class="admin-empty" style="padding:6px 0 0; text-align:left;">Оставь название пустым, если у этого ивента не должно быть своей рамки в продаже.</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" class="field-block">
+        <div>
+          <label class="field-label">Показывать с</label>
+          <input type="datetime-local" class="field-input" id="event-start-input">
+        </div>
+        <div>
+          <label class="field-label">Показывать до</label>
+          <input type="datetime-local" class="field-input" id="event-end-input">
+        </div>
+      </div>
+      <div class="admin-empty" style="padding:0 0 14px; text-align:left;">Оставь поля дат пустыми, если ивент должен показываться без ограничения по времени.</div>
+
+      <button class="btn btn-gold" id="btn-event-publish" style="width:100%; margin-bottom:10px;">СОХРАНИТЬ ИВЕНТ</button>
+      <button class="btn btn-line" id="btn-event-remove" style="width:100%;">Удалить этот ивент</button>
+
+    </div>
+
+    <!-- ===== "Журнал" — объединяет журнал действий ("Действия") и
+         присланные игроками ошибки ("Ошибки клиента", кнопка "Отправить"
+         на debug-окошке в index.html, см. window.showDebugError там — не
+         постоянный поток телеметрии, а то, что игрок сам решил прислать).
+         Обе части видны всем, у кого вообще есть доступ к панели — так
+         было и раньше у каждой по отдельности, см. showLogsSection(). -->
+    <div class="subview" data-panel="logs" id="panel-logs">
+      <div class="subnav">
+        <button class="btn btn-gold" id="logs-sub-actions">Действия</button>
+        <button class="btn btn-line" id="logs-sub-errors">Ошибки клиента</button>
+      </div>
+
+      <div id="logs-section-actions">
+        <div class="back-link" id="log-back-to-all" style="display:none;">← ко всем записям</div>
+        <div class="section-label" id="log-title">Журнал действий (все)</div>
+        <div id="log-list"></div>
+        <div class="admin-empty" id="log-empty" style="display:none;">Записей пока нет</div>
+      </div>
+
+      <div id="logs-section-errors" style="display:none;">
+        <div class="section-label" id="errors-title">Присланные ошибки (0)</div>
+        <div id="errors-list"></div>
+        <div class="admin-empty" id="errors-empty" style="display:none;">Пока никто ничего не присылал</div>
+      </div>
+    </div>
+
+    <!-- ===== "Заявки" — объединяет заявки на закрытый бета-тест
+         ("Заявки на бета", право beta — см. ниже) и модерацию кланов
+         ("Заявки кланов", право clans). Суб-нав, см. showBetaSection();
+         каждая секция видна/загружается только по своему исходному праву,
+         см. applyRoleUI — сама вкладка видна, если есть хоть одно из двух.
+
+         Заявки на закрытый бета-тест: пока config/closedBeta включён
+         (тумблер в "Системе"), index.html не создаёт аккаунт новым
+         визитёрам сам — вместо этого пишет betaApplications/<telegramId> и
+         показывает экран заявки. Одобрение здесь и создаёт настоящий
+         users/<telegramId> (с теми же полями по умолчанию, что и на самом
+         сайте при первом визите — см. approveBetaApplication).
+
+         Модерация кланов: создание клана и ссылка на его Telegram-чат
+         публикуются только после ручного одобрения — чтобы через название
+         клана или ссылку на "чат" не протаскивали рекламу. Пока клан на
+         рассмотрении, его создатель не может создать другой клан или
+         вступить в другой (это на стороне основного сайта, см. index.html:
+         users/<uid>/clanId ставится сразу при создании, ещё до одобрения). -->
+    <div class="subview" data-panel="beta" id="panel-beta">
+      <div class="subnav">
+        <button class="btn btn-gold" id="beta-sub-beta">Заявки на бета</button>
+        <button class="btn btn-line" id="beta-sub-clans">Заявки кланов</button>
+      </div>
+
+      <div id="beta-section-beta">
+        <div class="section-label">Заявки на рассмотрении</div>
+        <div id="beta-applications-list"></div>
+        <div class="admin-empty" id="beta-applications-empty" style="display:none;">Нет заявок, ожидающих проверки</div>
+      </div>
+
+      <div id="beta-section-clans" style="display:none;">
+        <div class="section-label">Кланы на рассмотрении</div>
+        <div id="clans-pending-list"></div>
+        <div class="admin-empty" id="clans-pending-empty" style="display:none;">Нет кланов, ожидающих проверки</div>
+
+        <div class="section-label" style="margin-top:22px;">Ссылки на чат — на проверке</div>
+        <div id="clan-chats-pending-list"></div>
+        <div class="admin-empty" id="clan-chats-pending-empty" style="display:none;">Нет ссылок, ожидающих проверки</div>
+      </div>
+    </div>
+
+    <!-- ===== "Статистика" — портировано из battle-data-admin-bot (та же
+         Firebase-база). Всё считается на клиенте из once('value') на
+         users/battles/matches/clans/events — там, где в схеме нет точного
+         поля (например «активность за сутки»), это явно помечено в
+         подписи/hint как оценка, а не выдаётся за точное число. Видна всем,
+         у кого вообще есть доступ к панели — это отчёт "только для чтения",
+         не отдельное переключаемое право, как остальные вкладки. -->
+    <div class="subview" data-panel="stats" id="panel-stats">
+      <div class="admin-card">
+        <div class="admin-empty" id="stats-loading" style="padding:6px 0;">Считаем показатели…</div>
+      </div>
+      <div id="stats-content" style="display:none;">
+
+        <div class="section-label">Игроки и активность</div>
+        <div class="admin-card">
+          <div class="stat-grid" id="stats-players-grid"></div>
+          <div class="admin-empty" style="text-align:left; padding:10px 0 0;">
+            «Активность» — оценка по последнему известному сигналу (онлайн прямо сейчас через presence, либо дата создания аккаунта createdAt), потому что в схеме нет отдельного поля lastSeen/lastActive. Это не точный показатель посещений за период.
+          </div>
+        </div>
+        <div class="admin-card">
+          <div class="section-label">По ролям</div>
+          <div id="stats-roles-bars"></div>
+        </div>
+        <div class="admin-card">
+          <div class="section-label">По лигам (трофеи)</div>
+          <div class="admin-empty" style="text-align:left; padding:0 0 10px;">Пороги лиг — как в игре (index.html, LEAGUES): 0 / 500 / 1500 / 3000 / 6000 / 10000 / 15000.</div>
+          <div id="stats-leagues-bars"></div>
+        </div>
+
+        <div class="section-label">Бои и матчмейкинг</div>
+        <div class="admin-card">
+          <div class="stat-grid" id="stats-battles-grid"></div>
+          <div class="admin-empty" id="stats-battles-hint" style="text-align:left; padding:10px 0 0;"></div>
+        </div>
+        <div class="admin-card">
+          <div class="section-label">Топ игроков по трофеям</div>
+          <div id="stats-top-players"></div>
+        </div>
+
+        <div class="section-label">Экономика</div>
+        <div class="admin-card">
+          <div class="stat-grid" id="stats-economy-grid"></div>
+          <div class="admin-empty" style="text-align:left; padding:10px 0 0;">В базе нет отдельного лога покупок (истории транзакций) — ниже агрегированы только текущие остатки/владения, взятые прямо со счетов игроков (starsBalance, ownedFrames, multiplierTickets), а не журнал платежей.</div>
+        </div>
+
+        <div class="section-label">Кланы и ивенты</div>
+        <div class="admin-card">
+          <div class="stat-grid" id="stats-clans-grid"></div>
+        </div>
+        <div class="admin-card">
+          <div class="section-label">Кланы по числу участников</div>
+          <div id="stats-clans-top"></div>
+        </div>
+        <div class="admin-card">
+          <div class="section-label">Ивенты</div>
+          <div class="admin-empty" style="text-align:left; padding:0 0 10px;">Точного счётчика «сколько игроков поучаствовали» в схеме нет — ниже показано число игроков, у которых на руках есть билет-множитель или значок, привязанный к ивенту (это и есть способ участия, см. index.html) — приблизительный, но реальный сигнал, а не выдумка.</div>
+          <div id="stats-events-list"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== "Администрация" — сводная таблица прав всех модераторов/
+         админов/супердоступов одним экраном, чтобы не заходить в карточку
+         каждого по отдельности через поиск в "Панели". Живой db.ref('users')
+         .on('value') (отключается при уходе с вкладки — см. диспетчер
+         кликов по .tab), роль — только текст (менять роль по-прежнему
+         только через карточку игрока, см. changeUserRole), а чекбоксы прав
+         зовут тот же setAdminPermission(uid, key, value), что и карточка
+         (см. toggleAdminPermission), так что путь записи один и тот же. -->
+    <div class="subview" data-panel="admins" id="panel-admins">
+      <div class="section-label" id="admins-title">Модераторы и админы</div>
+      <div id="admins-table-list"></div>
+      <div class="admin-empty" id="admins-table-empty" style="display:none;">Пока нет ни одного модератора/админа</div>
+    </div>
+
+    <!-- ===== "Бэкапы" — объединяет список снимков/"бэкап сейчас" и
+         восстановление, портировано из battle-data-admin-bot (тот же
+         GitHub-токен, тот же lock/unlock-механизм). Суб-нав, см.
+         showBackupsSection(). Доступ только superadmin (canManageRoles) —
+         не делегируется, как и "База данных" в "Системе": здесь либо
+         запись в чужой репозиторий, либо необратимое восстановление.
+
+         Отличие от источника: battle-data-admin-bot становится ПРИВАТНЫМ
+         репозиторием — листинг снимков и их скачивание больше не работают
+         анонимно, поэтому оба идут через Contents API с Bearer-токеном
+         (см. ghApi/listBackupsAuthed в JS), а не через публичный
+         raw.githubusercontent.com / неавторизованный contents-запрос, как
+         раньше. Восстановление БД по-прежнему без токена — пишет прямо в
+         открытую на запись RTDB. Восстановление кода (index.html,
+         battle-admin-bot) тоже токеном же, эти два репозитория остаются
+         публичными. -->
+    <div class="subview" data-panel="backups" id="panel-backups">
+      <div class="subnav">
+        <button class="btn btn-gold" id="backups-sub-list">Список и бэкап сейчас</button>
+        <button class="btn btn-line" id="backups-sub-restore">Восстановление</button>
+      </div>
+
+      <div id="backups-section-list">
+        <div class="admin-card">
+          <div class="section-label">GitHub-токен</div>
+          <div class="admin-empty" style="text-align:left; padding:0 0 10px;">
+            Нужен для листинга/скачивания снимков (battle-data-admin-bot теперь приватный — анонимное чтение больше не работает) и для кнопки «Сделать бэкап сейчас» и восстановления кода. Токен уходит напрямую в api.github.com из этого браузера (никакого промежуточного сервера нет) и хранится только в localStorage.
+            <br><br>
+            Fine-grained Personal Access Token (github.com → Settings → Developer settings → Fine-grained tokens), выданный только на три репозитория: <b>battle-data-admin-bot</b> (Contents: Read and write — теперь нужно и для чтения снимков, не только для бэкапа; Actions: Read and write — для «Сделать бэкап сейчас»), <b>index.html</b> и <b>battle-admin-bot</b> (оба — Contents: Read and write, для восстановления кода).
+          </div>
+          <div class="token-row">
+            <input type="password" class="field-input" id="gh-token-input" placeholder="github_pat_...">
+            <button class="btn btn-line" id="gh-token-save-btn">Сохранить</button>
+            <button class="btn btn-gold" id="gh-token-lock-btn">Закрепить токен</button>
+            <span class="inline-confirm" id="gh-token-save-confirm">Сохранено ✓</span>
+          </div>
+          <div class="lock-line" id="gh-token-locked-line" style="display:none;">
+            <span>🔒 Токен закреплён</span>
+            <button class="btn btn-line" id="gh-token-change-btn">Изменить токен</button>
+          </div>
+          <div class="status-line" id="gh-token-status"></div>
+        </div>
+
+        <div class="admin-card" id="gh-token-requests-card" style="display:none;">
+          <div class="section-label">Заявки на изменение токена</div>
+          <div class="admin-empty" style="text-align:left; padding:0 0 10px;">Запросы на разблокировку токена с других устройств/браузеров. Подтверждай только те, что ты сам инициировал.</div>
+          <div id="gh-token-requests-list"></div>
+        </div>
+
+        <div class="admin-card">
+          <div class="section-label">Сделать бэкап сейчас</div>
+          <div class="admin-empty" style="text-align:left; padding:0 0 10px;">Запускает оба workflow в battle-data-admin-bot немедленно (обычно они срабатывают раз в сутки по расписанию): свежий zip кода index.html и battle-admin-bot, свежий JSON всей базы. Снимок появится в списках ниже примерно через 1–2 минуты — тогда обнови страницу.</div>
+          <button class="btn btn-gold" id="backup-now-btn" style="width:100%;">Сделать бэкап сейчас</button>
+          <div class="status-line" id="backup-now-status"></div>
+        </div>
+
+        <div class="admin-card">
+          <div class="section-label">Код — index.html</div>
+          <div class="admin-empty" style="text-align:left; padding:0 0 8px;">Ежедневный zip-снимок исходников репозитория index.html.</div>
+          <div id="list-code-index"></div>
+        </div>
+
+        <div class="admin-card">
+          <div class="section-label">Код — battle-admin-bot</div>
+          <div class="admin-empty" style="text-align:left; padding:0 0 8px;">Ежедневный zip-снимок исходников репозитория battle-admin-bot.</div>
+          <div id="list-code-admin"></div>
+        </div>
+
+        <div class="admin-card">
+          <div class="section-label">База данных</div>
+          <div class="admin-empty" style="text-align:left; padding:0 0 8px;">Ежедневный экспорт всей Firebase RTDB (zolotaya-kletka) в JSON.</div>
+          <div id="list-db"></div>
+        </div>
+      </div>
+
+      <div id="backups-section-restore" style="display:none;">
+        <div class="warn-banner">
+          ⚠️ Восстановление — необратимое действие. Восстановление базы данных <b>полностью заменяет</b> текущую базу содержимым снимка. Восстановление кода <b>полностью заменяет</b> файлы репозитория состоянием на момент бэкапа — всё, что было добавлено после снимка, будет потеряно в этом репозитории. Дважды проверь дату перед подтверждением.
+        </div>
+
+        <div class="admin-card">
+          <div class="section-label">Восстановить базу данных</div>
+          <div class="admin-empty" style="text-align:left; padding:0 0 8px;">Пишет содержимое выбранного снимка прямо в Firebase RTDB (правила базы и так разрешают публичную запись — GitHub-токен для этого не нужен, только подтверждение ниже).</div>
+          <div class="row">
+            <select class="field-input" id="restore-db-select"></select>
+          </div>
+          <div class="row">
+            <input type="text" class="field-input" id="restore-db-confirm" placeholder="Впиши ВОССТАНОВИТЬ для подтверждения">
+            <button class="btn btn-live" id="restore-db-btn">Восстановить базу</button>
+          </div>
+          <div class="status-line" id="restore-db-status"></div>
+        </div>
+
+        <div class="admin-card">
+          <div class="section-label">Восстановить код</div>
+          <div class="admin-empty" style="text-align:left; padding:0 0 8px;">Требует GitHub-токен выше — заменяет файлы выбранного репозитория его состоянием на дату снимка одним коммитом в main.</div>
+          <div class="row">
+            <select class="field-input" id="restore-code-repo">
+              <option value="index.html">index.html</option>
+              <option value="battle-admin-bot">battle-admin-bot</option>
+            </select>
+            <select class="field-input" id="restore-code-select"></select>
+          </div>
+          <div class="row">
+            <input type="text" class="field-input" id="restore-code-confirm" placeholder="Впиши ВОССТАНОВИТЬ для подтверждения">
+            <button class="btn btn-live" id="restore-code-btn">Восстановить код</button>
+          </div>
+          <div class="status-line" id="restore-code-status"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== "Система" — объединяет "Опасную зону" (сброс перед
+         бета-тестом, обслуживание, закрытый бета-тест, аварийный режим —
+         название вкладки нарочно нейтральное) и "База данных" (сырой
+         просмотр всей Firebase RTDB деревом). Суб-нав, см.
+         showDangerSection(). Вкладка видна всем, у кого есть хоть одно из
+         двух прав — canManageDanger() (делегируемое право "danger") или
+         canManageRoles() (superadmin, для "База данных").
+
+         "Опасная зона": воспользоваться получится только у тех, у кого
+         включено делегируемое право "danger" (см. canManageDanger,
+         applyRoleUI). Право проверяется заново живым запросом к базе при
+         КАЖДОМ открытии вкладки (см. openDangerZone в JS), а не один раз
+         при входе в панель — так если право/роль сменили, пока вкладка
+         панели просто лежала открытой, старый доступ не сохранится.
+
+         Два самых необратимых/критических действия внутри неё — полный
+         сброс истории и аварийный режим — НЕ делегируются вообще, несмотря
+         на "danger": они дополнительно жёстко требуют role === 'superadmin'
+         (см. guard на кнопках btn-danger-reset/toggle-emergency ниже) — у
+         делегированного admin с включённым "danger" эти два блока либо
+         скрыты, либо показывают явное сообщение вместо органов управления.
+
+         Второй барьер сброса — секретный пароль, хранится в самой базе
+         (config/resetSecret). Задать/сменить его можно прямо здесь, в
+         панели (форма "Задать новый пароль" ниже). Пароль одноразовый:
+         после каждого УСПЕШНОГО сброса он автоматически стирается из базы
+         вместе с остальными данными.
+
+         "База данных": верхний уровень получаем дёшево через REST
+         ?shallow=true (просто список ключей, без выкачивания всей базы
+         разом); открытая ветка потом уже живая — db.ref(path).on('value')
+         — и при реальном изменении внутри неё коротко подсвечивается
+         зелёным (см. renderDbNode/diffDbValues в JS). Один запрос на ветку
+         верхнего уровня, а не десятки. Доступ только superadmin
+         (canManageRoles) — не делегируется, как и "Бэкапы": здесь виден
+         буквально весь контент базы, включая привязанные email
+         (emailLogins). Кнопка суб-нава скрыта не-superadmin (см.
+         applyRoleUI), а живые слушатели веток отключаются и при уходе на
+         другую вкладку целиком (см. диспетчер кликов по .tab), и при
+         переключении на секцию "Опасная зона" внутри этой же вкладки (см.
+         showDangerSection) — не тянуть трафик за экраном, которого никто
+         не видит, ровно тот же принцип, что был у отдельной вкладки. -->
+
+    <div class="subview" data-panel="danger" id="panel-danger">
+
+      <div class="subnav">
+        <button class="btn btn-gold" id="danger-sub-zone">Опасная зона</button>
+        <button class="btn btn-line" id="danger-sub-db" style="display:none;">База данных</button>
+      </div>
+
+      <div id="danger-section-zone">
+
+      <div class="center-msg" id="danger-checking" style="min-height:30vh;">
+        <div class="big">Проверяем доступ…</div>
+        <div class="small">Секунду — сверяемся с базой, у кого сейчас есть право на эту вкладку.</div>
+      </div>
+
+      <div id="danger-denied" style="display:none;">
+        <div class="section-label">Опасная зона</div>
+        <div class="admin-empty" style="text-align:left; padding:0;">
+          Обслуживание платформы и полный сброс перед бета-тестом — действие
+          для тех, кому явно выдано право «Система» (см. «Настроить права»
+          в карточке игрока), а два самых критичных пункта — только для
+          Супердоступа. У твоей текущей роли (<b id="danger-denied-role">—</b>)
+          сейчас нет прав даже на безопасную часть этой вкладки.
+        </div>
+      </div>
+
+      <div id="danger-allowed" style="display:none;">
+
+        <!-- рабочие переключатели — то, чем пользуются часто и без риска
+             необратимо что-то потерять, поэтому идут первыми. Доступны
+             всем с правом "danger", без требования superadmin. -->
+        <div class="admin-card">
+          <div class="section-label">Режим обслуживания (для обновлений/тестов)</div>
+          <div class="admin-empty" style="text-align:left; padding:0 0 10px;">
+            Закрывает основной сайт для обычных игроков — они увидят
+            экран «Идут технические работы». Модератор/Админ/Супердоступ
+            заходят как обычно, чтобы проверить обновление до того, как
+            открыть его всем.
+          </div>
+          <div class="toggle-row" id="toggle-maintenance">
+            <div class="toggle-check"></div>
+            <div class="toggle-label">Включён</div>
+          </div>
+          <label class="field-label" style="margin-top:12px;">Сообщение для игроков (необязательно)</label>
+          <textarea class="field-input" id="maintenance-message-input" placeholder="Скоро вернёмся — попробуй зайти чуть позже." rows="2"></textarea>
+          <button class="btn btn-line" id="btn-save-maintenance-message" style="width:100%; margin-top:8px;">Сохранить сообщение</button>
+        </div>
+
+        <div class="admin-card">
+          <div class="section-label">Закрытый бета-тест</div>
+          <div class="admin-empty" style="text-align:left; padding:0 0 10px;">
+            Новым визитёрам (у кого ещё нет аккаунта) вместо мгновенного
+            входа показывается экран заявки — принять их сможет только
+            тот, у кого включено право «Заявки на закрытый бета-тест» (см.
+            вкладку «Заявки»). У кого аккаунт уже есть — их не касается,
+            заходят как обычно.
+          </div>
+          <div class="toggle-row" id="toggle-closed-beta">
+            <div class="toggle-check"></div>
+            <div class="toggle-label">Включён</div>
+          </div>
+        </div>
+
+        <!-- разовые обслуживающие инструменты — тоже безопасные, но
+             используются от случая к случаю, а не постоянно -->
+        <div class="admin-card">
+          <div class="section-label">Значки-награды</div>
+          <label class="field-label">Принудительная выдача всем игрокам</label>
+          <div style="display:flex; gap:8px; margin-bottom:6px;">
+            <select class="field-input" id="danger-badge-select" style="flex:1;"></select>
+            <button class="btn btn-line" id="btn-danger-badge-grant" style="width:auto; padding:0 16px; flex-shrink:0;">Выдать всем</button>
+          </div>
+          <div class="admin-empty" style="text-align:left; padding:0;">
+            Выдаёт выбранный значок абсолютно всем текущим аккаунтам разом —
+            например, чтобы восстановить значок после сброса старой версии,
+            которая их стирала. Если у разных игроков раньше были разные
+            значки — точную историю (кому что выдавали) смотри в «Журнале».
+          </div>
+          <div class="admin-empty" id="danger-badge-grant-result" style="display:none; margin-top:8px; text-align:left;"></div>
+        </div>
+
+        <div class="admin-card">
+          <div class="section-label">Гостевые аккаунты</div>
+          <button class="btn btn-line" id="btn-danger-delete-guests" style="width:100%;">Удалить всех гостей</button>
+          <div class="admin-empty" style="text-align:left; padding:8px 0 0;">
+            Гости (аккаунты вида guest_...) создаются автоматически, когда
+            приложение открывают не из Telegram, и обычно сами чистятся
+            через 24 часа после создания. Эта кнопка удаляет их все прямо
+            сейчас, не дожидаясь суток.
+          </div>
+          <div class="admin-empty" id="danger-delete-guests-result" style="display:none; margin-top:8px; text-align:left;"></div>
+        </div>
+
+        <!-- необратимые/критические действия — сгруппированы отдельно,
+             визуально выделены рамкой var(--live), и требуют жёстко
+             role === 'superadmin' поверх права "danger" (см. JS) -->
+        <div class="admin-card live">
+          <div class="section-label" style="color:var(--live);">Опасная зона — сброс истории</div>
+
+          <div id="danger-reset-locked-note" style="display:none;">
+            <div class="admin-empty" style="text-align:left; padding:0; color:var(--live);">
+              Это действие доступен только Супердоступу.
+            </div>
+          </div>
+
+          <div id="danger-reset-controls">
+            <div class="admin-empty" style="text-align:left; padding:0 0 16px; color:var(--live);">
+              Необратимо удаляет всю историю боёв — matches, battles и очереди поиска
+              (queue, refereeQueue) — и обнуляет у ВСЕХ игроков очки, месячный рейтинг
+              и статистику. Аккаунты, роли, списки друзей/заявок и значки-награды
+              не трогает — значки остаются как есть, это не сезонная статистика,
+              а память о том, что игрок был в проекте. Делай это только перед
+              настоящим стартом бета-теста, когда вся текущая история — просто
+              тестовый мусор.
+            </div>
+
+            <label class="field-label">Задать новый пароль сброса (одноразовый — сработает один раз и сотрётся сам)</label>
+            <div style="display:flex; gap:8px; margin-bottom:6px;">
+              <input type="text" class="field-input" id="danger-secret-set-input" placeholder="Новый пароль" autocomplete="off" style="flex:1;">
+              <button class="btn btn-line" id="btn-danger-secret-save" style="width:auto; padding:0 16px; flex-shrink:0;">Сохранить</button>
+            </div>
+            <div class="admin-empty" id="danger-secret-save-result" style="display:none; margin-bottom:14px; text-align:left;"></div>
+
+            <label class="field-label">Пароль сброса</label>
+            <input type="password" class="field-input" id="danger-secret-input" placeholder="Пароль сброса" autocomplete="off" style="margin-bottom:10px;">
+            <button class="btn btn-live" id="btn-danger-reset" style="width:100%;">Подтвердить и сбросить всё</button>
+            <div class="admin-empty" id="danger-secret-missing" style="display:none; margin-top:10px; text-align:left; color:var(--live);">
+              config/resetSecret ещё не задан — сначала впиши пароль в поле выше
+              ("Задать новый пароль сброса") и сохрани его.
+            </div>
+
+            <div class="admin-empty" id="danger-reset-result" style="display:none; margin-top:14px;"></div>
+          </div>
+        </div>
+
+        <div class="admin-card live">
+          <div class="section-label" style="color:var(--live);">Аварийный режим</div>
+
+          <div id="danger-emergency-locked-note" style="display:none;">
+            <div class="admin-empty" style="text-align:left; padding:0; color:var(--live);">
+              Это действие доступен только Супердоступу.
+            </div>
+          </div>
+
+          <div id="danger-emergency-controls">
+            <div class="admin-empty" style="text-align:left; padding:0 0 10px; color:var(--live);">
+              Полностью закрывает и основной сайт, и эту панель — для ВСЕХ,
+              включая Админов и Модераторов. Доступ сохранится только у
+              Супердоступа. Включай только при реальном инциденте (взлом,
+              утечка данных, критический баг) — не для обычных обновлений,
+              для них есть режим обслуживания выше.
+            </div>
+            <div class="toggle-row" id="toggle-emergency">
+              <div class="toggle-check"></div>
+              <div class="toggle-label">Включён</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      </div>
+
+      <div id="danger-section-db" style="display:none;">
+        <div class="section-label">Firebase RTDB — дерево, живое обновление</div>
+        <div class="admin-card" style="padding:10px 12px;">
+          <div id="db-tree-root" class="db-tree"><div class="admin-empty">Загрузка…</div></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<!-- только для "Восстановление" (код) — распаковка zip-снимка battle-data-admin-bot в браузере -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>const firebaseConfig={apiKey:"AIzaSyBe2eSG48yzv_9r6Q5yUF7fe2b6YLQGuQg",authDomain:"zolotaya-kletka.firebaseapp.com",databaseURL:"https://zolotaya-kletka-default-rtdb.firebaseio.com",projectId:"zolotaya-kletka",storageBucket:"zolotaya-kletka.firebasestorage.app",messagingSenderId:"570732456851",appId:"1:570732456851:web:1a5e2ec46f5abf0e22d666"};firebase.initializeApp(firebaseConfig);const db=firebase.database();function emailToKey(e){return e.trim().toLowerCase().replace(/\./g,",")}function randomToken(e){const t=new Uint8Array(e);return crypto.getRandomValues(t),Array.from(t,e=>e.toString(16).padStart(2,"0")).join("")}function checkTokenNotDuplicated(e,t){return db.ref("users").orderByChild("deviceToken").equalTo(t).once("value").then(t=>{const n=t.val()||{};if(0===Object.keys(n).filter(t=>t!==e).length)return!0;const a={};return Object.keys(n).forEach(e=>{a[e+"/panelLocked"]=!0}),db.ref("users").update(a).then(()=>{const t=Object.keys(n).map(e=>{const t=n[e]||{};return`${t.firstName||"Игрок"} (${t.playerId||e})`}).join(", ");return logAction("token_collision_detected",e,null,null,`Совпадение deviceToken у аккаунтов: ${t}`),!1})})}const tg=window.Telegram?.WebApp;tg?.ready(),tg?.expand();const ALLOWED_ROLES=["moderator","admin","superadmin"],ROLE_LABELS={user:"Без доступа",moderator:"Модератор (устар.)",admin:"Админ",superadmin:"Супердоступ"},PERMISSION_DEFS=[{id:"bans",label:"Бан и ограничения игроков"},{id:"clans",label:"Модерация кланов и ссылок на чаты"},{id:"stats",label:"Ивент-баннер и статистика игрока"},{id:"badges",label:"Значки-награды"},{id:"beta",label:"Заявки на закрытый бета-тест"},{id:"danger",label:"Система (обслуживание, сброс)"}],ALL_PERMISSIONS_OFF={bans:!1,clans:!1,stats:!1,badges:!1,beta:!1,danger:!1},ALL_PERMISSIONS_ON={bans:!0,clans:!0,stats:!0,badges:!0,beta:!0,danger:!0};function resolvePermissions(e){return e?"superadmin"===e.role?{...ALL_PERMISSIONS_ON}:e.permissions?{...ALL_PERMISSIONS_OFF,...e.permissions}:"admin"===e.role?{...ALL_PERMISSIONS_ON}:"moderator"===e.role?{...ALL_PERMISSIONS_OFF,bans:!0,clans:!0}:{...ALL_PERMISSIONS_OFF}:{...ALL_PERMISSIONS_OFF}}let myTelegramId=null,myRole="user",myPermissions={...ALL_PERMISSIONS_OFF},foundUserKey=null,badgeDefsCache={};function showScreen(e){document.querySelectorAll(".screen").forEach(e=>e.classList.remove("active")),document.getElementById(e).classList.add("active")}function loadAccountAndShowApp(e){myTelegramId=e,db.ref("users/"+myTelegramId).once("value").then(e=>{const t=e.val(),n=t?.role||(t?.isAdmin?"admin":"user");myRole=n,myPermissions=resolvePermissions(t),t&&ALLOWED_ROLES.includes(n)?db.ref("config/emergencyLockdown").once("value").then(e=>{if(e.val()&&"superadmin"!==n)return void showScreen("screen-emergency");function a(){document.getElementById("me-box").style.display="block",document.getElementById("me-name").textContent=t.firstName||"Игрок",document.getElementById("me-role").textContent=ROLE_LABELS[n]||n,document.getElementById("me-logout-link").style.display=tgUser?"none":"inline",applyRoleUI(),showScreen("screen-app"),loadUserList(!1),loadBadgeDefs(),renderAccountTab(t),canManageRoles()&&(loadAllBackupLists().catch(e=>console.error("Бэкапы: первичная загрузка",e)),attachTokenChangeRequestsListener(myTelegramId))}const o=["admin","superadmin"];t.panelLocked&&o.includes(n)?showScreen("screen-device-locked"):t.deviceToken&&o.includes(n)?checkTokenNotDuplicated(myTelegramId,t.deviceToken).then(e=>{e?a():showScreen("screen-device-locked")}).catch(e=>{console.error("account-token check failed:",e),document.getElementById("denied-text").textContent="Не удалось проверить токен аккаунта: "+(e.message||e),showScreen("screen-denied")}):a()}):showScreen("screen-denied")}).catch(e=>{console.error(e),document.getElementById("denied-text").textContent="Не удалось проверить доступ: "+(e.message||e),showScreen("screen-denied")})}document.getElementById("me-logout-link").addEventListener("click",e=>{e.preventDefault(),window.localStorage.removeItem("battleTelegramId"),window.location.reload()});const tgUser=tg?.initDataUnsafe?.user;if(tgUser)loadAccountAndShowApp(String(tgUser.id));else{const e=window.localStorage.getItem("battleTelegramId");e?loadAccountAndShowApp(e):showScreen("screen-login")}let activeLoginRequestPath=null,activeLoginRequestCb=null,activeLoginRequestTimeout=null;function stopWaitingForLoginApproval(){activeLoginRequestPath&&activeLoginRequestCb&&db.ref(activeLoginRequestPath).off("value",activeLoginRequestCb),activeLoginRequestTimeout&&clearTimeout(activeLoginRequestTimeout),activeLoginRequestPath=null,activeLoginRequestCb=null,activeLoginRequestTimeout=null}function showLogsSection(e){const t="actions"===e;document.getElementById("logs-sub-actions").className="btn "+(t?"btn-gold":"btn-line"),document.getElementById("logs-sub-errors").className="btn "+(t?"btn-line":"btn-gold"),document.getElementById("logs-section-actions").style.display=t?"block":"none",document.getElementById("logs-section-errors").style.display=t?"none":"block",t?openAllLogs():loadErrorReports()}function showBetaSection(e){const t="beta"===e;document.getElementById("beta-sub-beta").className="btn "+(t?"btn-gold":"btn-line"),document.getElementById("beta-sub-clans").className="btn "+(t?"btn-line":"btn-gold"),document.getElementById("beta-section-beta").style.display=t?"block":"none",document.getElementById("beta-section-clans").style.display=t?"none":"block",t?canManageBeta()&&loadBetaApplicationsPanel():canManageClans()&&loadClansAdminPanel()}function showBackupsSection(e){const t="list"===e;document.getElementById("backups-sub-list").className="btn "+(t?"btn-gold":"btn-line"),document.getElementById("backups-sub-restore").className="btn "+(t?"btn-line":"btn-gold"),document.getElementById("backups-section-list").style.display=t?"block":"none",document.getElementById("backups-section-restore").style.display=t?"none":"block"}function showDangerSection(e){const t="zone"===e;document.getElementById("danger-sub-zone").className="btn "+(t?"btn-gold":"btn-line"),document.getElementById("danger-sub-db").className="btn "+(t?"btn-line":"btn-gold"),document.getElementById("danger-section-zone").style.display=t?"block":"none",document.getElementById("danger-section-db").style.display=t?"none":"block",t?detachAllDbLiveBranches():canManageRoles()&&loadDatabaseTree()}document.getElementById("login-submit-btn")?.addEventListener("click",async()=>{const e=document.getElementById("login-email-input").value.trim(),t=document.getElementById("login-error"),n=document.getElementById("login-status"),a=document.getElementById("login-submit-btn");if(t.style.display="none",n.style.display="none",!e||!e.includes("@"))return t.textContent="Впиши email",void(t.style.display="block");stopWaitingForLoginApproval(),a.disabled=!0,a.textContent="Ищем аккаунт…";try{const o=(await db.ref("emailLogins/"+emailToKey(e)).once("value")).val();if(!o)return t.textContent="Эта почта не привязана ни к одному аккаунту.",void(t.style.display="block");const s=db.ref("users/"+o+"/loginRequests").push();await s.set({device:"Админ-панель, браузер",requestedAt:Date.now(),status:"pending"});const l="users/"+o+"/loginRequests/"+s.key;n.textContent="⏳ Заявка отправлена — подтверди её в игре (Сообщество → Запросы) или в самой панели (вкладка «Аккаунт») на устройстве с настоящим Telegram-аккаунтом.",n.style.display="block",a.textContent="Ждём подтверждения…",activeLoginRequestPath=l,activeLoginRequestCb=db.ref(l).on("value",e=>{const s=e.val();s&&"pending"!==s.status&&("approved"===s.status?(db.ref(l).remove(),window.localStorage.setItem("battleTelegramId",o),n.textContent="✅ Вход разрешён, открываем панель…",stopWaitingForLoginApproval(),loadAccountAndShowApp(o)):"denied"===s.status&&(db.ref(l).remove(),t.style.display="block",t.textContent="Отклонено на другом устройстве.",stopWaitingForLoginApproval(),a.disabled=!1,a.textContent="Запросить вход"))}),activeLoginRequestTimeout=setTimeout(()=>{db.ref(l).once("value").then(e=>{"pending"===e.val()?.status&&db.ref(l).remove()}),stopWaitingForLoginApproval(),t.style.display="block",t.textContent="Время ожидания истекло, попробуй ещё раз.",a.disabled=!1,a.textContent="Запросить вход"},3e5)}catch(e){t.textContent="Не удалось отправить запрос: "+(e.message||e.code||e),t.style.display="block",a.disabled=!1,a.textContent="Запросить вход"}}),document.querySelectorAll(".tab").forEach(e=>{e.addEventListener("click",()=>{document.querySelectorAll(".tab").forEach(e=>e.classList.remove("active")),e.classList.add("active"),document.querySelectorAll("[data-panel]").forEach(e=>e.classList.remove("active")),document.querySelector(`[data-panel="${e.dataset.tab}"]`).classList.add("active"),"danger"!==e.dataset.tab&&detachAllDbLiveBranches(),"admins"!==e.dataset.tab&&detachAdminsLiveListener(),"logs"===e.dataset.tab&&showLogsSection("actions"),"event"===e.dataset.tab&&loadEventsAdminList(),"beta"===e.dataset.tab&&showBetaSection(canManageBeta()?"beta":"clans"),"admins"===e.dataset.tab&&loadAdminsTab(),"stats"===e.dataset.tab&&loadStatsTab(),"backups"===e.dataset.tab&&(showBackupsSection("list"),loadAllBackupLists()),"danger"===e.dataset.tab&&(showDangerSection("zone"),openDangerZone()),"account"===e.dataset.tab&&db.ref("users/"+myTelegramId).once("value").then(e=>renderAccountTab(e.val()||{}))})}),document.getElementById("logs-sub-actions").addEventListener("click",()=>showLogsSection("actions")),document.getElementById("logs-sub-errors").addEventListener("click",()=>showLogsSection("errors")),document.getElementById("beta-sub-beta").addEventListener("click",()=>showBetaSection("beta")),document.getElementById("beta-sub-clans").addEventListener("click",()=>showBetaSection("clans")),document.getElementById("backups-sub-list").addEventListener("click",()=>showBackupsSection("list")),document.getElementById("backups-sub-restore").addEventListener("click",()=>showBackupsSection("restore")),document.getElementById("danger-sub-zone").addEventListener("click",()=>showDangerSection("zone")),document.getElementById("danger-sub-db").addEventListener("click",()=>showDangerSection("db"));const userListWrap=document.getElementById("user-list-wrap"),userListChevron=document.getElementById("user-list-chevron");function loadUserList(e=!0){Promise.all([db.ref("users").once("value"),db.ref("presence").once("value")]).then(([t,n])=>{const a=t.val()||{},o=n.val()||{},s=document.getElementById("user-list"),l=Object.entries(a).sort((e,t)=>(t[1].createdAt||0)-(e[1].createdAt||0));document.getElementById("user-list-label").textContent=`Все игроки (${l.length})`,document.getElementById("user-count-badge").textContent=l.length.toLocaleString("ru-RU"),e&&(s.innerHTML="",l.forEach(([e,t])=>{const n=t.role||(t.isAdmin?"admin":"user"),a=!!o[e],l="banned"===t.status,r="restricted"===t.status&&t.restrictedUntil&&t.restrictedUntil>Date.now(),d=e.startsWith("guest_"),i=document.createElement("div");i.className="user-row"+(a?" online":""),i.innerHTML=`\n          <div class="u-avatar">${(t.firstName||"??").slice(0,2).toUpperCase()}<div class="u-online-dot"></div></div>\n          <div class="u-info">\n            <div class="u-name">${t.firstName||"Без имени"}</div>\n            <div class="u-id">${t.playerId||e}</div>\n          </div>\n          ${d?'<div class="u-role-badge role-user" style="opacity:0.6;">guest</div>':""}\n          ${l?'<div class="u-role-badge role-admin">BAN</div>':r?'<div class="u-role-badge role-admin">TIMEOUT</div>':""}\n          <div class="u-role-badge role-${n}">${n}</div>\n        `,i.addEventListener("click",()=>openUserDetail(e,t)),s.appendChild(i)}))}),cleanupStaleGuests()}function cleanupStaleGuests(){db.ref("users").once("value").then(e=>{const t=e.val()||{},n=Date.now();Object.entries(t).forEach(([e,t])=>{e.startsWith("guest_")&&n-(t.createdAt||0)>864e5&&(db.ref("users/"+e).remove(),db.ref("presence/"+e).remove())})})}function renderStatusBadge(e){const t=document.getElementById("r-status-badge"),n=Date.now();if("banned"===e.status)t.innerHTML='<span class="badge live">ЗАБАНЕН НАВСЕГДА</span>';else if("restricted"===e.status&&e.restrictedUntil&&e.restrictedUntil>n){const a=Math.ceil((e.restrictedUntil-n)/36e5);t.innerHTML=`<span class="badge live">ОГРАНИЧЕН ещё ~${a} ч.</span>`}else t.innerHTML=""}function canEditStats(){return myPermissions.stats}function canManageBadges(){return myPermissions.badges}function canManageEvent(){return myPermissions.stats}function canManageClans(){return myPermissions.clans}function canManageBans(){return myPermissions.bans}function canManageBeta(){return myPermissions.beta}function canManageDanger(){return myPermissions.danger}function canManageRoles(){return"superadmin"===myRole}function renderRoleManageBlock(e,t){const n=document.getElementById("role-manage-block");if(!canManageRoles())return n.style.display="none",void(n.innerHTML="");n.style.display="flex";const a=["user","admin","superadmin"];"moderator"===t&&a.unshift("moderator"),n.innerHTML=a.map(e=>`<div class="badge-pill pick${e===t?" on":""}" data-role="${e}">${ROLE_LABELS[e]}</div>`).join(""),n.querySelectorAll("[data-role]").forEach(n=>{n.addEventListener("click",()=>changeUserRole(e,n.dataset.role,t))})}function renderDeviceTokenBlock(e,t,n){const a=document.getElementById("device-token-row"),o=canManageRoles()&&("admin"===n||"superadmin"===n),s=document.getElementById("device-token-reveal");if(!o)return a.style.display="none",void(s.style.display="none");a.style.display="flex",s.style.display="none";const l=document.getElementById("device-token-status"),r=document.getElementById("btn-device-token-issue"),d=document.getElementById("btn-device-token-unlock");t.panelLocked?(l.innerHTML='<strong style="color:var(--live);">🔒 ЗАБЛОКИРОВАН — токен аккаунта обнаружен на двух разных аккаунтах</strong>',r.textContent="Перевыпустить токен",d.style.display="block"):t.deviceToken?(l.innerHTML='<strong style="color:var(--gold);">Токен аккаунта создан автоматически ✓</strong><br>Токен аккаунта создаётся автоматически при первом входе — вручную выдавать или передавать его не нужно. Кнопка ниже нужна только чтобы принудительно пересоздать токен (например, если аккаунт заблокирован из-за подозрения на утечку и нужен новый).',r.textContent="Перевыпустить токен",d.style.display="none"):(l.textContent="Токен не выдан — защита от угона выключена для этого аккаунта, пока ты не выдашь токен вручную.",r.textContent="Создать токен вручную",d.style.display="none")}function changeUserRole(e,t,n){if(!canManageRoles()||t===n)return;const a=ROLE_LABELS[t]||t;confirm(e===myTelegramId&&"superadmin"!==t?`Ты меняешь роль СЕБЕ на "${a}" — после этого можешь потерять доступ к панели. Продолжить?`:`Сменить роль игрока на "${a}"?`)&&db.ref("users/"+e).once("value").then(n=>{const a=n.val()||{},o={role:t};return"admin"!==t||a.permissions||(o.permissions={...ALL_PERMISSIONS_OFF}),db.ref("users/"+e).update(o)}).then(()=>{const t=document.getElementById("r-name").textContent,o=document.getElementById("r-id").textContent;return logAction("role_changed",e,t,o,`${ROLE_LABELS[n]||n} → ${a}`),db.ref("users/"+e).once("value")}).then(n=>{if(!n.exists())return;const a=n.val();openUserDetail(e,a),"admin"===t&&openAdminRights(e,a)}).catch(e=>{console.error(e),alert("Не удалось изменить роль: "+(e.message||e))})}function renderAdminRightsToggles(e,t){const n=document.getElementById("admin-rights-toggles");n.innerHTML=PERMISSION_DEFS.map(e=>`\n      <div class="toggle-row${t[e.id]?" on":""}" data-perm="${e.id}">\n        <div class="toggle-check"></div>\n        <div class="toggle-label">${escapeHtml(e.label)}</div>\n      </div>\n    `).join(""),n.querySelectorAll(".toggle-row").forEach(t=>{t.addEventListener("click",()=>toggleAdminPermission(e,t.dataset.perm,t.classList.contains("on")))})}function setAdminPermission(e,t,n,a,o){if(!canManageRoles())return Promise.reject(new Error("нет прав"));const s=(PERMISSION_DEFS.find(e=>e.id===t)||{}).label||t;return db.ref("users/"+e+"/permissions/"+t).set(n).then(()=>{logAction("admin_permission_changed",e,a,o,`${s}: ${n?"включено":"выключено"}`)})}function toggleAdminPermission(e,t,n){if(!canManageRoles())return;const a=!n,o=document.getElementById("rights-name").textContent,s=document.getElementById("rights-id").textContent;setAdminPermission(e,t,a,o,s).then(()=>db.ref("users/"+e).once("value")).then(t=>{t.exists()&&renderAdminRightsToggles(e,resolvePermissions(t.val()))}).catch(e=>{console.error(e),alert("Не удалось изменить право: "+(e.message||e))})}function openAdminRights(e,t){document.getElementById("rights-name").textContent=t.firstName||"Без имени",document.getElementById("rights-id").textContent=t.playerId||e;const n=document.getElementById("rights-avatar");t.avatarData?(n.style.backgroundImage=`url('${t.avatarData}')`,n.textContent=""):(n.style.backgroundImage="",n.textContent=(t.firstName||"??").slice(0,2).toUpperCase()),renderAdminRightsToggles(e,resolvePermissions(t)),document.querySelectorAll("[data-panel]").forEach(e=>e.classList.remove("active")),document.getElementById("panel-admin-rights").classList.add("active"),document.querySelectorAll(".tab").forEach(e=>e.classList.remove("active")),document.querySelector(".tabs").style.display="none"}function applyRoleUI(){const e=document.querySelector('.tab[data-tab="event"]');e&&(e.style.display=canManageEvent()?"":"none");const t=document.querySelector('.tab[data-tab="beta"]');t&&(t.style.display=canManageBeta()||canManageClans()?"":"none");const n=document.getElementById("beta-sub-beta");n&&(n.style.display=canManageBeta()?"":"none");const a=document.getElementById("beta-sub-clans");a&&(a.style.display=canManageClans()?"":"none");const o=document.querySelector('.tab[data-tab="admins"]');o&&(o.style.display=canManageRoles()?"":"none");const s=document.querySelector('.tab[data-tab="backups"]');s&&(s.style.display=canManageRoles()?"":"none");const l=document.querySelector('.tab[data-tab="danger"]');l&&(l.style.display=canManageDanger()||canManageRoles()?"":"none");const r=document.getElementById("danger-sub-db");r&&(r.style.display=canManageRoles()?"":"none")}function renderAccountTab(e){const t=document.getElementById("account-email-status"),n=document.getElementById("account-email-form"),a=document.getElementById("account-no-telegram-note");if(!t)return;t.textContent=e.attachedEmail?"привязан ✅ — "+e.attachedEmail:"ещё не привязан";const o=!!tg?.initDataUnsafe?.user;n.style.display=o?"block":"none",a.style.display=o?"none":"block",loadAccountLoginRequests()}function loadAccountLoginRequests(){const e=document.getElementById("account-login-requests-list"),t=document.getElementById("account-login-requests-empty");e&&myTelegramId&&db.ref("users/"+myTelegramId+"/loginRequests").once("value").then(n=>{const a=n.val()||{},o=Object.keys(a).filter(e=>"pending"===a[e]?.status);if(!o.length)return e.innerHTML="",void(t.style.display="block");t.style.display="none",e.innerHTML=o.map(e=>`\n        <div style="background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:10px 12px; display:flex; align-items:center; gap:10px; margin-bottom:8px;">\n          <div style="flex:1; min-width:0; font-size:13px; font-weight:600;">🔐 ${escapeHtml(a[e].device||"неизвестное устройство")}</div>\n          <button type="button" class="account-approve-login" data-key="${e}" style="background:var(--gold); border:none; color:#0B0B0D; border-radius:100px; padding:7px 12px; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0;">✓ Разрешить</button>\n          <button type="button" class="account-deny-login" data-key="${e}" style="background:none; border:1px solid var(--line); color:var(--muted); border-radius:100px; width:30px; height:30px; font-size:14px; cursor:pointer; flex-shrink:0;">✕</button>\n        </div>\n      `).join(""),e.querySelectorAll(".account-approve-login").forEach(e=>{e.addEventListener("click",()=>{db.ref("users/"+myTelegramId+"/loginRequests/"+e.dataset.key).update({status:"approved"}).then(loadAccountLoginRequests)})}),e.querySelectorAll(".account-deny-login").forEach(e=>{e.addEventListener("click",()=>{db.ref("users/"+myTelegramId+"/loginRequests/"+e.dataset.key).update({status:"denied"}).then(loadAccountLoginRequests)})})}).catch(e=>console.error("Заявки на вход",e))}document.getElementById("btn-toggle-user-list").addEventListener("click",()=>{const e="none"!==userListWrap.style.display;userListWrap.style.display=e?"none":"block",userListChevron.style.transform=e?"rotate(0deg)":"rotate(180deg)",e||loadUserList(!0)}),document.getElementById("btn-device-token-issue").addEventListener("click",()=>{if(!foundUserKey||!canManageRoles())return;const e=foundUserKey,t=document.getElementById("r-name").textContent,n=document.getElementById("r-id").textContent,a=randomToken(16);db.ref("users/"+e+"/deviceToken").set(a).then(()=>db.ref("users/"+e+"/panelLocked").remove()).then(()=>(logAction("device_token_issued",e,t,n,"Выдан новый токен аккаунта"),db.ref("users/"+e).once("value"))).then(t=>{const n=t.val();if(!n)return;const o=n.role||(n.isAdmin?"admin":"user");renderDeviceTokenBlock(e,n,o);const s=document.getElementById("device-token-reveal");s.innerHTML="Токен аккаунта создаётся автоматически — вручную выдавать или передавать его не нужно, показано только для отладки.<br>"+escapeHtml(a),s.style.display="block"}).catch(e=>{console.error(e),alert("Не удалось выдать токен: "+(e.message||e))})}),document.getElementById("btn-device-token-unlock").addEventListener("click",()=>{if(!foundUserKey||!canManageRoles())return;const e=foundUserKey,t=document.getElementById("r-name").textContent,n=document.getElementById("r-id").textContent;db.ref("users/"+e+"/panelLocked").remove().then(()=>(logAction("device_token_unlocked",e,t,n,"Блокировка по токену аккаунта снята"),db.ref("users/"+e).once("value"))).then(t=>{const n=t.val();if(!n)return;const a=n.role||(n.isAdmin?"admin":"user");renderDeviceTokenBlock(e,n,a)}).catch(e=>{console.error(e),alert("Не удалось снять блокировку: "+(e.message||e))})}),document.getElementById("admin-rights-back").addEventListener("click",()=>{document.querySelector(".tabs").style.display="flex",document.querySelectorAll("[data-panel]").forEach(e=>e.classList.remove("active")),document.getElementById("panel-players").classList.add("active"),document.querySelector('.tab[data-tab="panel"]').classList.add("active")}),document.getElementById("btn-account-send-link")?.addEventListener("click",async()=>{const e=document.getElementById("account-email-result");e.style.display="block",e.style.color="";const t=document.getElementById("account-email-input").value.trim();if(!t||!t.includes("@"))return e.style.color="var(--live)",void(e.textContent="Впиши email");if(!tg?.initDataUnsafe?.user)return e.style.color="var(--live)",void(e.textContent="Доступно только из Telegram");e.style.color="",e.textContent="Привязываем…";try{const n=emailToKey(t),a=(await db.ref("emailLogins/"+n).once("value")).val();if(a&&a!==myTelegramId)return e.style.color="var(--live)",void(e.textContent="Эта почта уже привязана к другому аккаунту.");await db.ref("emailLogins/"+n).set(myTelegramId),await db.ref("users/"+myTelegramId).update({attachedEmail:t}),e.style.color="var(--gold)",e.textContent="✅ Привязано — теперь с другого устройства можно запросить вход по этому email.",document.getElementById("account-email-input").value="",document.getElementById("account-email-status").textContent="привязан ✅ — "+t}catch(t){e.style.color="var(--live)",e.textContent="Не удалось привязать: "+(t.message||t.code||t)}});let badgeDefsReadyPromise=null;function loadBadgeDefs(){return badgeDefsReadyPromise=db.ref("badgeDefs").once("value").then(e=>{let t=e.val();return t?(badgeDefsCache=t,t):db.ref("badgeDefs").push({emoji:"🧪",label:"Альфа-тест",createdAt:Date.now()}).then(()=>db.ref("badgeDefs").once("value")).then(e=>(badgeDefsCache=e.val()||{},badgeDefsCache))}),badgeDefsReadyPromise}function renderUserBadgesSection(e,t){const n=document.getElementById("user-badges-list"),a=document.getElementById("badge-catalog"),o=Object.keys(t||{}),s=canManageBadges();n.innerHTML=o.length?o.map(e=>{const t=badgeDefsCache[e];return t?`<div class="badge-pill awarded"${s?` data-remove-badge="${e}"`:""}><span class="emoji">${t.emoji||"🏅"}</span>${t.label||""}${s?'<span class="remove">×</span>':""}</div>`:""}).join(""):'<div class="admin-empty" style="padding:2px 0;">Пока не выдано ни одного значка</div>',a.innerHTML=Object.entries(badgeDefsCache).map(([e,t])=>`<div class="badge-pill pick${o.includes(e)?" on":""}" data-pick-badge="${e}"><span class="emoji">${t.emoji||"🏅"}</span>${t.label||""}</div>`).join(""),n.querySelectorAll("[data-remove-badge]").forEach(t=>{t.addEventListener("click",()=>toggleBadge(e,t.dataset.removeBadge,!0))}),a.querySelectorAll("[data-pick-badge]").forEach(t=>{t.addEventListener("click",()=>toggleBadge(e,t.dataset.pickBadge,o.includes(t.dataset.pickBadge)))})}function toggleBadge(e,t,n){if(!canManageBadges())return;const a=badgeDefsCache[t],o=document.getElementById("r-name").textContent,s=document.getElementById("r-id").textContent,l=db.ref("users/"+e+"/badges/"+t);(n?l.remove():l.set(!0)).then(()=>(logAction(n?"badge_revoked":"badge_given",e,o,s,a?.label||t),db.ref("users/"+e+"/badges").once("value"))).then(t=>renderUserBadgesSection(e,t.val())).catch(e=>{console.error(e),alert("Не удалось изменить значок")})}function openUserDetail(e,t){foundUserKey=e;const n=t.role||(t.isAdmin?"admin":"user");document.getElementById("r-name").textContent=t.firstName||"Без имени",document.getElementById("r-id").textContent=t.playerId||e,document.getElementById("r-points-val").textContent=t.points??0;const a=document.getElementById("r-tickets-line"),o=Object.values(t.multiplierTickets||{});o.length?(a.style.display="block",document.getElementById("r-tickets-val").textContent=o.map(e=>"x"+e.value).join(", ")):a.style.display="none";const s=document.getElementById("r-avatar");t.avatarData?(s.style.backgroundImage=`url('${t.avatarData}')`,s.textContent=""):(s.style.backgroundImage="",s.textContent=(t.firstName||"??").slice(0,2).toUpperCase()),document.getElementById("role-info").innerHTML=`<div class="admin-empty" style="padding:4px 0 0;">Текущий уровень: <strong>${ROLE_LABELS[n]||n}</strong>${canManageRoles()?"":". Менять роли может только Супердоступ."}</div>`,renderRoleManageBlock(e,n),renderDeviceTokenBlock(e,t,n);const l=document.getElementById("btn-open-admin-rights");l.style.display=canManageRoles()&&"admin"===n?"block":"none",l.onclick=()=>openAdminRights(e,t),renderStatusBadge(t),(badgeDefsReadyPromise||Promise.resolve()).then(()=>renderUserBadgesSection(e,t.badges||{}));const r=canManageBadges();document.getElementById("badge-manage-block").style.display=r?"flex":"none",document.getElementById("badge-manage-locked-note").style.display=r?"none":"block";const d=canEditStats(),i=t.stats||{};document.getElementById("stats-edit-block").style.display=d?"flex":"none",document.getElementById("stats-edit-locked-note").style.display=d?"none":"block";const c={"edit-points":t.points??0,"edit-stars":t.starsBalance??0,"edit-battles":i.battles??0,"edit-wins":i.wins??0,"edit-losses":i.losses??0,"edit-draws":i.draws??0,"edit-referee":i.refereeBattles??0,"edit-likes":i.audienceLikes??0};Object.entries(c).forEach(([e,t])=>{const n=document.getElementById(e);n&&(n.value=t)});const u=canManageBans();document.getElementById("ban-manage-block").style.display=u?"flex":"none",document.getElementById("ban-manage-locked-note").style.display=u?"none":"block",document.getElementById("admin-empty").style.display="none";const m=document.getElementById("admin-result");m.style.display="block",m.scrollIntoView({behavior:"smooth",block:"center"})}function searchPlayer(){const e=document.getElementById("admin-search-input").value.trim().toUpperCase();e&&db.ref("users").orderByChild("playerId").equalTo(e).once("value").then(e=>{if(!e.exists()){document.getElementById("admin-result").style.display="none";const e=document.getElementById("admin-empty");return e.style.display="block",e.textContent="Игрок с таким ID не найден",void(foundUserKey=null)}const t=e.val(),n=Object.keys(t)[0];openUserDetail(n,t[n])})}document.getElementById("btn-create-badge").addEventListener("click",()=>{if(!foundUserKey||!canManageBadges())return;const e=document.getElementById("new-badge-emoji"),t=document.getElementById("new-badge-label"),n=e.value.trim()||"🏅",a=t.value.trim();a?db.ref("badgeDefs").push({emoji:n,label:a,createdAt:Date.now()}).then(n=>(e.value="",t.value="",logAction("badge_created",n.key,a,n.key,"Новый значок в каталоге"),loadBadgeDefs())).then(()=>db.ref("users/"+foundUserKey+"/badges").once("value")).then(e=>renderUserBadgesSection(foundUserKey,e.val())).catch(e=>{console.error(e),alert("Не удалось создать значок")}):t.focus()}),document.getElementById("admin-search-btn").addEventListener("click",searchPlayer),document.getElementById("admin-search-input").addEventListener("keydown",e=>{"Enter"===e.key&&searchPlayer()});const ACTION_LABELS={stats_change:"Изменение статистики",ban_temp:"Временный бан",ban_forever:"Бан навсегда",unban:"Снятие бана",badge_given:"Выдан значок",badge_revoked:"Снят значок",badge_created:"Создан новый значок",event_published:"Опубликован ивент",event_removed:"Ивент снят с главного экрана",full_reset:"⚠️ Полный сброс перед бета-тестом",reset_secret_changed:"Пароль сброса задан/изменён",badge_mass_given:"Значок выдан всем игрокам",guests_deleted:"Удалены все гостевые аккаунты",clan_approved:"Клан одобрен",clan_rejected:"Клан отклонён",clan_chat_approved:"Ссылка на чат клана одобрена",clan_chat_rejected:"Ссылка на чат клана отклонена",role_changed:"Изменена роль",admin_permission_changed:"Изменено право администратора",maintenance_toggled:"Режим обслуживания переключён",maintenance_message_changed:"Сообщение режима обслуживания изменено",emergency_lockdown_toggled:"Аварийный режим переключён",closed_beta_toggled:"Закрытый бета-тест переключён",beta_application_approved:"Заявка на бета-тест одобрена",beta_application_rejected:"Заявка на бета-тест отклонена",token_collision_detected:"Обнаружен дублирующийся токен устройства — аккаунты заблокированы"};function logAction(e,t,n,a,o){db.ref("logs").push({timestamp:Date.now(),actorPlayerId:tgUser&&myTelegramId?myTelegramId:"—",actorName:tgUser?.first_name||tgUser?.username||"—",actionType:e,targetKey:t,targetName:n,targetPlayerId:a,details:o||""})}function renderLogEntries(e){const t=document.getElementById("log-list"),n=document.getElementById("log-empty");t.innerHTML="",0!==e.length?(n.style.display="none",e.forEach(e=>{const n=document.createElement("div");n.className="log-row";const a=new Date(e.timestamp).toLocaleString("ru-RU");n.innerHTML=`\n        <div class="l-title">${ACTION_LABELS[e.actionType]||e.actionType}</div>\n        <div class="l-body">${e.actorName} (${e.actorPlayerId}) → ${e.targetName||"—"} (${e.targetPlayerId||"—"})${e.details?"<br>"+e.details:""}</div>\n        <div class="l-time">${a}</div>\n      `,t.appendChild(n)})):n.style.display="block"}function openAllLogs(){document.getElementById("log-title").textContent="Журнал действий (все)",document.getElementById("log-back-to-all").style.display="none",db.ref("logs").limitToLast(100).once("value").then(e=>{const t=e.val()||{};renderLogEntries(Object.values(t).sort((e,t)=>t.timestamp-e.timestamp))})}function renderErrorReports(e){const t=document.getElementById("errors-list"),n=document.getElementById("errors-empty");document.getElementById("errors-title").textContent=`Присланные ошибки (${e.length})`,t.innerHTML="",e.length?(n.style.display="none",e.forEach(([e,n])=>{const a=document.createElement("div");a.className="log-row";const o=new Date(n.createdAt||0).toLocaleString("ru-RU"),s=n.firstName?`${escapeHtml(n.firstName)} (${escapeHtml(n.playerId||n.telegramId||"—")})`:n.telegramId||"неизвестно";a.innerHTML=`\n        <div class="l-title">${s}</div>\n        <div class="l-body" style="white-space:pre-wrap; word-break:break-word;">${escapeHtml(n.log||"")}</div>\n        <div class="l-time">${o}${n.userAgent?" · "+escapeHtml(n.userAgent):""}</div>\n        <button class="btn btn-line" data-report-id="${e}" style="width:100%; margin-top:8px; padding:7px; font-size:11.5px;">Удалить</button>\n      `,a.querySelector("[data-report-id]").addEventListener("click",()=>{db.ref("errorReports/"+e).remove().then(loadErrorReports)}),t.appendChild(a)})):n.style.display="block"}function loadErrorReports(){db.ref("errorReports").limitToLast(200).once("value").then(e=>{const t=e.val()||{};renderErrorReports(Object.entries(t).sort((e,t)=>(t[1].createdAt||0)-(e[1].createdAt||0)))})}document.getElementById("btn-open-player-history").addEventListener("click",()=>{foundUserKey&&(document.querySelector('.tab[data-tab="logs"]').click(),document.getElementById("log-title").textContent="История: "+document.getElementById("r-id").textContent,document.getElementById("log-back-to-all").style.display="inline-flex",db.ref("logs").orderByChild("targetKey").equalTo(foundUserKey).once("value").then(e=>{const t=e.val()||{};renderLogEntries(Object.values(t).sort((e,t)=>t.timestamp-e.timestamp))}))}),document.getElementById("log-back-to-all").addEventListener("click",openAllLogs),document.getElementById("btn-save-stats").addEventListener("click",()=>{if(!foundUserKey||!canEditStats())return;const e=e=>Math.max(0,parseInt(document.getElementById(e).value,10)||0),t={points:e("edit-points"),starsBalance:e("edit-stars"),"stats/battles":e("edit-battles"),"stats/wins":e("edit-wins"),"stats/losses":e("edit-losses"),"stats/draws":e("edit-draws"),"stats/refereeBattles":e("edit-referee"),"stats/audienceLikes":e("edit-likes")},n=document.getElementById("r-name").textContent,a=document.getElementById("r-id").textContent;db.ref("users/"+foundUserKey).update(t).then(()=>{document.getElementById("r-points-val").textContent=t.points,logAction("stats_change",foundUserKey,n,a,"Статистика изменена администратором")}).catch(e=>{console.error(e),alert("Не удалось сохранить статистику")})}),document.querySelectorAll(".ban-duration-btn").forEach(e=>{e.addEventListener("click",()=>{if(!foundUserKey||!canManageBans())return;const t=parseInt(e.dataset.hours,10),n=Date.now()+36e5*t,a=document.getElementById("r-name").textContent,o=document.getElementById("r-id").textContent;db.ref("users/"+foundUserKey).update({status:"restricted",restrictedUntil:n}).then(()=>{db.ref("users/"+foundUserKey).once("value").then(e=>renderStatusBadge(e.val())),logAction("ban_temp",foundUserKey,a,o,`Ограничение на ${t} ч.`)})})}),document.getElementById("btn-ban-forever").addEventListener("click",()=>{if(!foundUserKey||!canManageBans())return;const e=document.getElementById("r-name").textContent,t=document.getElementById("r-id").textContent;db.ref("users/"+foundUserKey).update({status:"banned",restrictedUntil:null}).then(()=>{db.ref("users/"+foundUserKey).once("value").then(e=>renderStatusBadge(e.val())),logAction("ban_forever",foundUserKey,e,t,"Забанен навсегда")})}),document.getElementById("btn-unban").addEventListener("click",()=>{if(!foundUserKey||!canManageBans())return;const e=document.getElementById("r-name").textContent,t=document.getElementById("r-id").textContent;db.ref("users/"+foundUserKey).update({status:"active",restrictedUntil:null}).then(()=>{db.ref("users/"+foundUserKey).once("value").then(e=>renderStatusBadge(e.val())),logAction("unban",foundUserKey,e,t,"Бан/ограничение снято")})});let eventImageData=null,currentEventId=null,eventsCache={};function toDatetimeLocalValue(e){if(!e)return"";return new Date(e-6e4*(new Date).getTimezoneOffset()).toISOString().slice(0,16)}function fromDatetimeLocalValue(e){if(!e)return null;const t=new Date(e).getTime();return Number.isNaN(t)?null:t}function isEventLive(e){const t=Date.now();return(!e.startAt||t>=e.startAt)&&(!e.endAt||t<=e.endAt)}function renderEventImagePreview(){const e=document.getElementById("event-img-preview"),t=document.getElementById("event-img-empty");eventImageData?(e.src=eventImageData,e.style.display="block",t.style.display="none"):(e.style.display="none",t.style.display="flex")}function renderEventBadgeOptions(e){const t=document.getElementById("event-badge-select"),n=void 0!==e?e:t.value;t.innerHTML='<option value="">Без значка</option>'+Object.entries(badgeDefsCache).map(([e,t])=>`<option value="${e}">${t.emoji||"🏅"} ${t.label||""}</option>`).join(""),t.value=n||""}function resetEventForm(){currentEventId=null,document.getElementById("event-status").className="event-status off",document.getElementById("event-status").textContent="Новый ивент — ещё не сохранён",document.getElementById("event-title-input").value="",document.getElementById("event-desc-input").value="",document.getElementById("event-start-input").value="",document.getElementById("event-end-input").value="",eventImageData=null,renderEventImagePreview(),renderEventBadgeOptions(""),multiplierSelect.value="",document.getElementById("event-frame-color").value="#F2B705",document.getElementById("event-frame-name").value="",document.getElementById("event-frame-price").value="",document.getElementById("event-frame-effect").value="none",document.querySelectorAll(".event-admin-row").forEach(e=>e.classList.remove("editing"))}function editEvent(e,t){currentEventId=e;const n=document.getElementById("event-status"),a=isEventLive(t);n.className="event-status "+(a?"on":"off"),n.textContent=a?"Этот ивент сейчас показывается на главном экране":"Ивент сохранён, но сейчас не показывается (за пределами дат показа)",document.getElementById("event-title-input").value=t.title||"",document.getElementById("event-desc-input").value=t.description||"",document.getElementById("event-start-input").value=toDatetimeLocalValue(t.startAt),document.getElementById("event-end-input").value=toDatetimeLocalValue(t.endAt),eventImageData=t.imageData||null,renderEventImagePreview(),renderEventBadgeOptions(t.badgeId||""),multiplierSelect.value=t.multiplier?String(t.multiplier):"",document.getElementById("event-frame-color").value=t.shopFrame?.color||"#F2B705",document.getElementById("event-frame-name").value=t.shopFrame?.name||"",document.getElementById("event-frame-price").value=t.shopFrame?.price||"",document.getElementById("event-frame-effect").value=t.shopFrame?.effect||"none",document.querySelectorAll(".event-admin-row").forEach(t=>t.classList.toggle("editing",t.dataset.eventId===e)),document.getElementById("event-status").scrollIntoView({behavior:"smooth",block:"center"})}function renderEventsAdminList(){const e=document.getElementById("events-admin-list"),t=document.getElementById("events-admin-empty"),n=Object.entries(eventsCache).sort((e,t)=>(t[1].createdAt||0)-(e[1].createdAt||0));document.getElementById("events-admin-list-label").textContent=`Все ивенты (${n.length})`,t.style.display=n.length?"none":"block",e.innerHTML=n.map(([e,t])=>{const n=isEventLive(t);return`<div class="event-admin-row${n?" live":""}${e===currentEventId?" editing":""}" data-event-id="${e}">\n        <div class="ea-dot"></div>\n        <div class="ea-info">\n          <div class="ea-title">${t.title||"Без названия"}</div>\n          <div class="ea-sub">${n?"Активен сейчас":"Не активен"}${t.badgeId?" · со значком":""}${t.multiplier?" · билет x"+t.multiplier:""}${t.shopFrame?" · рамка за "+t.shopFrame.price+"⭐":""}</div>\n        </div>\n      </div>`}).join(""),e.querySelectorAll("[data-event-id]").forEach(e=>{e.addEventListener("click",()=>editEvent(e.dataset.eventId,eventsCache[e.dataset.eventId]))})}function loadEventsAdminList(){(badgeDefsReadyPromise||loadBadgeDefs()).then(()=>{db.ref("events").once("value").then(e=>{eventsCache=e.val()||{},renderEventsAdminList()})})}document.getElementById("btn-event-new").addEventListener("click",resetEventForm),document.getElementById("btn-event-create-badge").addEventListener("click",()=>{const e=document.getElementById("event-new-badge-emoji"),t=document.getElementById("event-new-badge-label"),n=e.value.trim()||"🏅",a=t.value.trim();a?db.ref("badgeDefs").push({emoji:n,label:a,createdAt:Date.now()}).then(n=>(e.value="",t.value="",logAction("badge_created",n.key,a,n.key,"Новый значок в каталоге (для ивента)"),loadBadgeDefs().then(()=>renderEventBadgeOptions(n.key)))).catch(e=>{console.error(e),alert("Не удалось создать значок")}):t.focus()}),document.getElementById("btn-event-pick-img").addEventListener("click",()=>{document.getElementById("event-img-input").click()}),document.getElementById("event-img-input").addEventListener("change",async e=>{const t=e.target.files[0];if(t){try{const e=new Image;e.src=URL.createObjectURL(t),await new Promise((t,n)=>{e.onload=t,e.onerror=n});const n=900,a=Math.min(1,n/e.width),o=Math.round(e.width*a),s=Math.round(e.height*a),l=document.createElement("canvas");l.width=o,l.height=s,l.getContext("2d").drawImage(e,0,0,o,s),URL.revokeObjectURL(e.src),eventImageData=l.toDataURL("image/jpeg",.75),renderEventImagePreview()}catch(e){console.error("event image upload failed",e),alert("Не удалось загрузить картинку")}e.target.value=""}}),document.getElementById("btn-event-publish").addEventListener("click",()=>{if(!canManageEvent())return;const e=document.getElementById("event-title-input").value.trim();if(!e)return void document.getElementById("event-title-input").focus();const t=document.getElementById("event-desc-input").value.trim(),n=fromDatetimeLocalValue(document.getElementById("event-start-input").value),a=fromDatetimeLocalValue(document.getElementById("event-end-input").value),o=document.getElementById("event-badge-select").value||null,s=Number(multiplierSelect.value)||null,l=document.getElementById("event-frame-name").value.trim(),r=Number(document.getElementById("event-frame-price").value)||0,d=l&&r>0?{name:l,color:document.getElementById("event-frame-color").value,price:r,effect:document.getElementById("event-frame-effect").value}:null,i={title:e,description:t,imageData:eventImageData||null,startAt:n,endAt:a,badgeId:o,multiplier:s,shopFrame:d,createdAt:eventsCache[currentEventId]?.createdAt||Date.now()},c=currentEventId?db.ref("events/"+currentEventId):db.ref("events").push();c.set(i).then(()=>{logAction("event_published",c.key,e,"—",t),currentEventId=c.key,loadEventsAdminList()}).catch(e=>{console.error(e),alert("Не удалось сохранить ивент")})}),document.getElementById("btn-event-remove").addEventListener("click",()=>{if(!canManageEvent())return;if(!currentEventId)return void alert("Сначала выбери сохранённый ивент в списке — этот ещё не сохранён");const e=document.getElementById("event-title-input").value.trim()||"—";db.ref("events/"+currentEventId).remove().then(()=>{logAction("event_removed",currentEventId,e,"—",""),resetEventForm(),loadEventsAdminList()}).catch(e=>{console.error(e),alert("Не удалось удалить ивент")})});const multiplierSelect=document.getElementById("event-multiplier-select");function escapeHtml(e){return String(e??"").replace(/[&<>"']/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[e]))}multiplierSelect.innerHTML='<option value="">Без множителя</option>'+Array.from({length:9},(e,t)=>t+2).map(e=>`<option value="${e}">x${e}</option>`).join("");const CLAN_POLICY_LABELS_ADMIN={open:"Открытый",code:"По коду",request:"По заявке"};function isSafeTelegramLink(e){return/^https:\/\/t\.me\/[A-Za-z0-9_+/-]+$/.test(String(e||""))}function loadClansAdminPanel(){db.ref("clans").once("value").then(e=>{const t=e.val()||{},n=Object.values(t);renderClanApprovalQueue(n.filter(e=>"pending"===(e.status||"approved"))),renderClanChatApprovalQueue(n.filter(e=>"pending"===e.chatLinkStatus))}).catch(e=>{console.error("Кланы: загрузка",e)})}function renderClanApprovalQueue(e){const t=document.getElementById("clans-pending-list");document.getElementById("clans-pending-empty").style.display=e.length?"none":"block",t.innerHTML=e.map(e=>`\n      <div class="clan-review-card" data-code="${e.code}" style="background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:12px;">\n        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">\n          <div style="font-size:24px; flex-shrink:0;">${escapeHtml(e.emoji||"🛡")}</div>\n          <div style="flex:1; min-width:0;">\n            <div style="font-size:14px; font-weight:700;">${escapeHtml(e.name||"Клан")}</div>\n            <div style="font-size:11px; color:var(--muted);">${escapeHtml(e.code)} · лидер ${escapeHtml(e.leaderId||"—")} · политика: ${CLAN_POLICY_LABELS_ADMIN[e.joinPolicy]||escapeHtml(e.joinPolicy||"—")}</div>\n          </div>\n        </div>\n        <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Создан: ${e.createdAt?new Date(e.createdAt).toLocaleString("ru-RU"):"—"}</div>\n        <textarea class="field-input clan-reject-reason" placeholder="Причина отказа — увидит создатель клана" rows="2" style="margin-bottom:8px;"></textarea>\n        <div style="display:flex; gap:8px;">\n          <button class="btn btn-gold clan-approve-btn" style="flex:1;">✓ Одобрить</button>\n          <button class="btn btn-live clan-reject-btn" style="flex:1;">✕ Отклонить</button>\n        </div>\n      </div>\n    `).join(""),t.querySelectorAll(".clan-review-card").forEach(e=>{const t=e.dataset.code;e.querySelector(".clan-approve-btn").addEventListener("click",()=>approveClan(t)),e.querySelector(".clan-reject-btn").addEventListener("click",()=>{const n=e.querySelector(".clan-reject-reason").value.trim();n?rejectClan(t,n):alert("Укажи причину отказа — её увидит создатель клана")})})}function renderClanChatApprovalQueue(e){const t=document.getElementById("clan-chats-pending-list");document.getElementById("clan-chats-pending-empty").style.display=e.length?"none":"block",t.innerHTML=e.map(e=>`\n      <div class="clan-chat-review-card" data-code="${e.code}" style="background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:12px;">\n        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">\n          <div style="font-size:24px; flex-shrink:0;">${escapeHtml(e.emoji||"🛡")}</div>\n          <div style="flex:1; min-width:0;">\n            <div style="font-size:14px; font-weight:700;">${escapeHtml(e.name||"Клан")}</div>\n            <div style="font-size:11px; color:var(--muted);">${escapeHtml(e.code)} · лидер ${escapeHtml(e.leaderId||"—")}</div>\n          </div>\n        </div>\n        <div style="font-size:12.5px; margin-bottom:10px; word-break:break-all;">\n          ${isSafeTelegramLink(e.chatLink)?`<a href="${escapeHtml(e.chatLink)}" target="_blank" rel="noopener" style="color:var(--gold);">${escapeHtml(e.chatLink)}</a>`:`<span style="color:var(--live);">Ссылка не похожа на https://t.me/... — ${escapeHtml(e.chatLink||"")}</span>`}\n        </div>\n        <div class="admin-empty" style="text-align:left; padding:0 0 10px;">Открой ссылку и проверь, что чат публичный и в него можно зайти сразу — если нужна заявка, которую одобряет кто-то другой, проверить, что это за чат, нельзя, и такую ссылку стоит отклонить.</div>\n        <textarea class="field-input clan-chat-reject-reason" placeholder="Причина отказа — увидит лидер клана" rows="2" style="margin-bottom:8px;"></textarea>\n        <div style="display:flex; gap:8px;">\n          <button class="btn btn-gold clan-chat-approve-btn" style="flex:1;">✓ Одобрить</button>\n          <button class="btn btn-live clan-chat-reject-btn" style="flex:1;">✕ Отклонить</button>\n        </div>\n      </div>\n    `).join(""),t.querySelectorAll(".clan-chat-review-card").forEach(e=>{const t=e.dataset.code;e.querySelector(".clan-chat-approve-btn").addEventListener("click",()=>approveClanChat(t)),e.querySelector(".clan-chat-reject-btn").addEventListener("click",()=>{const n=e.querySelector(".clan-chat-reject-reason").value.trim();n?rejectClanChat(t,n):alert("Укажи причину отказа — её увидит лидер клана")})})}function approveClan(e){canManageClans()&&db.ref("clans/"+e).update({status:"approved",rejectionReason:null}).then(()=>{logAction("clan_approved",e,e,e,""),loadClansAdminPanel()}).catch(e=>alert("Не удалось одобрить клан: "+(e.message||e)))}function rejectClan(e,t){canManageClans()&&db.ref("clans/"+e).update({status:"rejected",rejectionReason:t}).then(()=>{logAction("clan_rejected",e,e,e,"Причина: "+t),loadClansAdminPanel()}).catch(e=>alert("Не удалось отклонить клан: "+(e.message||e)))}function approveClanChat(e){canManageClans()&&db.ref("clans/"+e).update({chatLinkStatus:"approved",chatLinkRejectionReason:null}).then(()=>{logAction("clan_chat_approved",e,e,e,""),loadClansAdminPanel()}).catch(e=>alert("Не удалось одобрить ссылку: "+(e.message||e)))}function rejectClanChat(e,t){canManageClans()&&db.ref("clans/"+e).update({chatLinkStatus:"rejected",chatLinkRejectionReason:t}).then(()=>{logAction("clan_chat_rejected",e,e,e,"Причина: "+t),loadClansAdminPanel()}).catch(e=>alert("Не удалось отклонить ссылку: "+(e.message||e)))}function generatePlayerId(){const e="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let t="";for(let n=0;n<6;n++)t+=e[Math.floor(32*Math.random())];return"PLR-"+t}function loadBetaApplicationsPanel(){db.ref("betaApplications").once("value").then(e=>{const t=e.val()||{};renderBetaApplicationsQueue(Object.entries(t).filter(([,e])=>"pending"===(e.status||"pending")))}).catch(e=>console.error("Заявки на бета: загрузка",e))}function renderBetaApplicationsQueue(e){const t=document.getElementById("beta-applications-list");document.getElementById("beta-applications-empty").style.display=e.length?"none":"block",t.innerHTML=e.map(([e,t])=>`\n      <div class="clan-review-card" data-uid="${e}" style="background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:12px;">\n        <div style="font-size:14px; font-weight:700; margin-bottom:4px;">${escapeHtml(t.firstName||"Игрок")}</div>\n        <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">${escapeHtml(t.username||e)} · заявка: ${t.requestedAt?new Date(t.requestedAt).toLocaleString("ru-RU"):"—"}</div>\n        <textarea class="field-input beta-reject-reason" placeholder="Причина отказа — увидит заявитель" rows="2" style="margin-bottom:8px;"></textarea>\n        <div style="display:flex; gap:8px;">\n          <button class="btn btn-gold beta-approve-btn" style="flex:1;">✓ Принять</button>\n          <button class="btn btn-live beta-reject-btn" style="flex:1;">✕ Отклонить</button>\n        </div>\n      </div>\n    `).join(""),t.querySelectorAll(".clan-review-card").forEach(e=>{const t=e.dataset.uid;e.querySelector(".beta-approve-btn").addEventListener("click",()=>approveBetaApplication(t)),e.querySelector(".beta-reject-btn").addEventListener("click",()=>{const n=e.querySelector(".beta-reject-reason").value.trim();n?rejectBetaApplication(t,n):alert("Укажи причину отказа — её увидит заявитель")})})}function approveBetaApplication(e){if(!canManageBeta())return;const t=db.ref("betaApplications/"+e);t.once("value").then(n=>{const a=n.val()||{},o={playerId:generatePlayerId(),firstName:a.firstName||"Игрок",username:a.username||null,role:"user",points:1e3,starsBalance:0,stats:{battles:0,wins:0,losses:0,draws:0,refereeBattles:0,audienceLikes:0},avatarData:null,status:"active",restrictedUntil:null,createdAt:Date.now()};return db.ref("users/"+e).set(o).then(()=>t.update({status:"approved",decidedAt:Date.now()}))}).then(()=>{logAction("beta_application_approved",e,"—",e,"Заявка одобрена, аккаунт создан"),loadBetaApplicationsPanel()}).catch(e=>alert("Не удалось одобрить заявку: "+(e.message||e)))}function rejectBetaApplication(e,t){canManageBeta()&&db.ref("betaApplications/"+e).update({status:"rejected",rejectionReason:t,decidedAt:Date.now()}).then(()=>{logAction("beta_application_rejected",e,"—",e,"Причина: "+t),loadBetaApplicationsPanel()}).catch(e=>alert("Не удалось отклонить заявку: "+(e.message||e)))}const dbTreeState={rootKeys:null,openPaths:new Set,liveBranches:new Map};function dbValueClass(e){return null===e?"null":"string"==typeof e?"str":"number"==typeof e?"num":"boolean"==typeof e?"bool":""}function dbValuePreview(e){return null===e?"null":"string"==typeof e?'"'+e+'"':String(e)}function dbDeepEqual(e,t){if(e===t)return!0;const n=null!==e&&"object"==typeof e;if(n!==(null!==t&&"object"==typeof t)||!n)return!1;const a=Object.keys(e),o=Object.keys(t);return a.length===o.length&&a.every(n=>dbDeepEqual(e[n],t[n]))}function dbCollectChanges(e,t,n,a){if(dbDeepEqual(e,t))return;a.add(n);const o=null!==e&&"object"==typeof e?e:null,s=null!==t&&"object"==typeof t?t:null;if(!o||!s)return;new Set([...Object.keys(o),...Object.keys(s)]).forEach(e=>dbCollectChanges(o[e],s[e],n+"/"+e,a))}const DB_TREE_CHILD_LIMIT=200;function renderDbLevel(e,t,n,a){const o=Object.keys(e),s=o.slice(0,200);let l=s.map(o=>{const s=t?t+"/"+o:o,l=e[o],r=n?!0===l:null!==l&&"object"==typeof l,d=a&&a.has(s)?" flash":"";if(!r)return`<div class="db-node${d}" data-db-path="${escapeHtml(s)}">\n          <span class="db-toggle"></span>\n          <span class="db-key">${escapeHtml(o)}</span>:\n          <span class="db-val ${dbValueClass(l)}">${escapeHtml(dbValuePreview(l))}</span>\n        </div>`;const i=dbTreeState.openPaths.has(s);let c=n?null:Object.keys(l).length,u="";if(i)if(n){const e=dbTreeState.liveBranches.get(o);e&&e.ready?(c=Object.keys(e.data||{}).length,u=renderDbLevel(e.data||{},s,!1,a)):u='<div class="admin-empty" style="padding:6px 0;">Загрузка…</div>'}else u=renderDbLevel(l,s,!1,a);return`<div class="db-node container${d}" data-db-path="${escapeHtml(s)}">\n          <span class="db-toggle">${i?"▾":"▸"}</span>\n          <span class="db-key">${escapeHtml(o)}</span>\n          ${null===c?"":`<span class="db-count">{${c}}</span>`}\n        </div>\n        ${i?`<div class="db-children">${u}</div>`:""}`}).join("");return o.length>s.length&&(l+=`<div class="admin-empty" style="padding:4px 0; text-align:left;">… ещё ${o.length-s.length}</div>`),l}function renderDbTree(e){const t=document.getElementById("db-tree-root");dbTreeState.rootKeys&&(t.innerHTML=renderDbLevel(dbTreeState.rootKeys,"",!0,e||null),t.querySelectorAll(".db-node.container").forEach(e=>{e.addEventListener("click",t=>{t.stopPropagation(),toggleDbPath(e.dataset.dbPath)})}))}function toggleDbPath(e){const t=!e.includes("/");if(dbTreeState.openPaths.has(e))return dbTreeState.openPaths.delete(e),t&&detachDbLiveBranch(e),void renderDbTree();dbTreeState.openPaths.add(e),t&&!dbTreeState.liveBranches.has(e)&&attachDbLiveBranch(e),renderDbTree()}function attachDbLiveBranch(e){const t={ref:db.ref(e),cb:null,data:null,ready:!1};t.cb=t.ref.on("value",n=>{const a=n.val()||{};if(!t.ready)return t.data=a,t.ready=!0,void renderDbTree();const o=new Set;dbCollectChanges(t.data,a,e,o),t.data=a,o.size&&renderDbTree(o)},t=>console.error("База: ветка "+e,t)),dbTreeState.liveBranches.set(e,t)}function detachDbLiveBranch(e){const t=dbTreeState.liveBranches.get(e);t&&(t.ref.off("value",t.cb),dbTreeState.liveBranches.delete(e))}function detachAllDbLiveBranches(){dbTreeState.liveBranches.forEach((e,t)=>detachDbLiveBranch(t))}function loadDatabaseTree(){if(!canManageRoles())return;const e=document.getElementById("db-tree-root");fetch(firebaseConfig.databaseURL+"/.json?shallow=true").then(e=>e.json()).then(e=>{dbTreeState.rootKeys=e||{},dbTreeState.openPaths.forEach(e=>{e.includes("/")||dbTreeState.liveBranches.has(e)||attachDbLiveBranch(e)}),renderDbTree()}).catch(t=>{e.innerHTML='<div class="admin-empty">Не удалось загрузить список веток базы</div>',console.error("База: корневой список",t)})}let adminsListRef=null,adminsListCb=null;function detachAdminsLiveListener(){adminsListRef&&adminsListCb&&adminsListRef.off("value",adminsListCb),adminsListRef=null,adminsListCb=null}function loadAdminsTab(){canManageRoles()&&(detachAdminsLiveListener(),adminsListRef=db.ref("users"),adminsListCb=adminsListRef.on("value",e=>{const t=e.val()||{},n=Object.entries(t).filter(([,e])=>["moderator","admin","superadmin"].includes(e?.role));n.sort((e,t)=>(e[1].firstName||"").localeCompare(t[1].firstName||"","ru")),renderAdminsTable(n)},e=>console.error("Администрация: список",e)))}function renderAdminsTable(e){const t=document.getElementById("admins-table-list"),n=document.getElementById("admins-table-empty");if(document.getElementById("admins-title").textContent=`Модераторы и админы (${e.length})`,!e.length)return t.innerHTML="",void(n.style.display="block");n.style.display="none",t.innerHTML=e.map(([e,t])=>{const n=t.role,a="superadmin"===n,o=resolvePermissions(t),s=PERMISSION_DEFS.map(t=>`\n        <div class="toggle-row${o[t.id]?" on":""}${a?"":" admins-perm-toggle"}" data-uid="${e}" data-perm="${t.id}" style="padding:9px 0;${a?" opacity:0.55; cursor:default;":""}">\n          <div class="toggle-check"></div>\n          <div class="toggle-label">${escapeHtml(t.label)}</div>\n        </div>\n      `).join("");return`\n        <div class="admin-card">\n          <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">\n            <div class="r-avatar" style="width:36px; height:36px; margin-bottom:0; font-size:12px; flex-shrink:0;${t.avatarData?` background-image:url('${t.avatarData}'); background-size:cover; background-position:center;`:""}">${t.avatarData?"":(t.firstName||"??").slice(0,2).toUpperCase()}</div>\n            <div style="min-width:0; flex:1;">\n              <div style="font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(t.firstName||"Без имени")}</div>\n              <div style="font-size:11.5px; color:var(--muted);">${escapeHtml(t.playerId||e)}</div>\n            </div>\n            <div class="u-role-badge role-${n}">${n}</div>\n          </div>\n          ${a?'<div class="admin-empty" style="text-align:left; padding:4px 0 6px;">Супердоступ — есть всё по умолчанию</div>':""}\n          <div>${s}</div>\n        </div>\n      `}).join(""),t.querySelectorAll(".admins-perm-toggle").forEach(t=>{t.addEventListener("click",()=>{const n=t.dataset.uid,a=t.dataset.perm,o=t.classList.contains("on"),s=(e.find(([e])=>e===n)||[])[1]||{},l=s.firstName||"Без имени",r=s.playerId||n;setAdminPermission(n,a,!o,l,r).catch(e=>{console.error(e),alert("Не удалось изменить право: "+(e.message||e))})})})}function statTile(e,t){return`<div class="stat-tile"><div class="st-val">${escapeHtml(String(e))}</div><div class="st-label">${escapeHtml(t)}</div></div>`}function barRow(e,t,n){const a=n>0?Math.max(2,Math.round(t/n*100)):0;return`<div class="bar-row"><span class="bar-label">${escapeHtml(e)}</span><span class="bar-track"><span class="bar-fill" style="width:${a}%"></span></span><span class="bar-count">${t}</span></div>`}const STAT_LEAGUES=[{name:"Сын шлюхи",minPoints:0},{name:"Говно из-под коня",minPoints:500},{name:"Отброс общества",minPoints:1500},{name:"Шавка подзаборная",minPoints:3e3},{name:"Уважаемый тролль",minPoints:6e3},{name:"Батя троллей",minPoints:1e4},{name:"Рабовладелец",minPoints:15e3}];function leagueOf(e){let t=STAT_LEAGUES[0];for(const n of STAT_LEAGUES)(e||0)>=n.minPoints&&(t=n);return t.name}function isStatsEventLive(e){if(!e)return!1;const t=Date.now();return!(e.startsAt&&t<e.startsAt)&&(!(e.endsAt&&t>e.endsAt)&&(!!e.active||!!e.startsAt||!!e.endsAt))}function loadStatsTab(){const e=document.getElementById("stats-loading"),t=document.getElementById("stats-content");e.style.display="block",e.textContent="Считаем показатели…",t.style.display="none",Promise.all([db.ref("users").once("value"),db.ref("presence").once("value"),db.ref("battles").once("value"),db.ref("matches").once("value"),db.ref("clans").once("value"),db.ref("events").once("value")]).then(([n,a,o,s,l,r])=>{renderStatsTab({users:n.val()||{},presence:a.val()||{},battles:o.val()||{},matches:s.val()||{},clans:l.val()||{},events:r.val()||{}}),e.style.display="none",t.style.display="block"}).catch(t=>{console.error("Статистика: загрузка",t),e.textContent="Не удалось загрузить данные для статистики: "+(t.message||t)})}function renderStatsTab({users:e,presence:t,battles:n,matches:a,clans:o,events:s}){const l=Object.entries(e),r=l.length,d=l.filter(([e])=>e.startsWith("guest_")),i=r-d.length,c=Object.keys(t).length,u=Date.now(),m=864e5,g=l.filter(([,e])=>u-(e.createdAt||0)<m).length,p=l.filter(([,e])=>u-(e.createdAt||0)<7*m).length;document.getElementById("stats-players-grid").innerHTML=[statTile(r.toLocaleString("ru-RU"),"Всего аккаунтов"),statTile(i.toLocaleString("ru-RU"),"Telegram-аккаунты"),statTile(d.length.toLocaleString("ru-RU"),"Гостевые"),statTile(c.toLocaleString("ru-RU"),"Онлайн прямо сейчас"),statTile(g.toLocaleString("ru-RU"),"Новых за 24ч (по createdAt)"),statTile(p.toLocaleString("ru-RU"),"Новых за 7д (по createdAt)")].join("");const y={};l.forEach(([,e])=>{const t=e.role||"user";y[t]=(y[t]||0)+1});const v=Math.max(1,...Object.values(y));document.getElementById("stats-roles-bars").innerHTML=Object.entries(y).sort((e,t)=>t[1]-e[1]).map(([e,t])=>barRow(ROLE_LABELS[e]||e,t,v)).join("")||'<div class="admin-empty">Нет данных</div>';const b={};STAT_LEAGUES.forEach(e=>{b[e.name]=0}),l.forEach(([,e])=>{const t=leagueOf(e.points);b[t]=(b[t]||0)+1});const f=Math.max(1,...Object.values(b));document.getElementById("stats-leagues-bars").innerHTML=STAT_LEAGUES.map(e=>barRow(e.name,b[e.name]||0,f)).join("");const h=Object.entries(n),E=Object.entries(a),k=[...h,...E],B=e=>e.createdAt||e.startedAt||e.timestamp||0,I=k.filter(([,e])=>u-B(e)<m).length,L=k.filter(([,e])=>u-B(e)<7*m).length;document.getElementById("stats-battles-grid").innerHTML=[statTile(h.length.toLocaleString("ru-RU"),"Активных/сохранённых battles"),statTile(E.length.toLocaleString("ru-RU"),"Записей matches"),statTile(I.toLocaleString("ru-RU"),"За сегодня (по метке времени)"),statTile(L.toLocaleString("ru-RU"),"За 7 дней (по метке времени)")].join(""),document.getElementById("stats-battles-hint").textContent="battles хранит только активные/недавно завершённые бои (не архив истории целиком) — «всего» тут не значит «за всё время проекта». Средняя длительность не показана: явных полей начала/конца боя, пригодных для расчёта, в найденных записях нет.";const S=l.filter(([e])=>!e.startsWith("guest_")).sort((e,t)=>(t[1].points||0)-(e[1].points||0)).slice(0,10);document.getElementById("stats-top-players").innerHTML=S.length?S.map(([,e],t)=>`<div class="list-row"><span>${t+1}. ${escapeHtml(e.firstName||"Без имени")}</span><span class="meta">${(e.points??0).toLocaleString("ru-RU")} 🏆</span></div>`).join(""):'<div class="admin-empty">Нет данных</div>';let C=0,A=0,x=0;l.forEach(([,e])=>{C+=Number(e.starsBalance||0),A+=Object.keys(e.ownedFrames||{}).length,x+=Object.keys(e.multiplierTickets||{}).length}),document.getElementById("stats-economy-grid").innerHTML=[statTile(C.toLocaleString("ru-RU"),"Stars в обороте (сумма starsBalance)"),statTile((r?Math.round(C/r):0).toLocaleString("ru-RU"),"Stars в среднем на аккаунт"),statTile(A.toLocaleString("ru-RU"),"Купленных/полученных рамок (ownedFrames)"),statTile(x.toLocaleString("ru-RU"),"Неиспользованных билетов-множителей")].join("");const T=Object.entries(o),w=T.filter(([,e])=>"approved"===(e.status||"approved")),R=T.filter(([,e])=>"pending"===(e.status||"approved")),$=w.map(([,e])=>Object.keys(e.members||{}).length),_=$.reduce((e,t)=>e+t,0);document.getElementById("stats-clans-grid").innerHTML=[statTile(w.length.toLocaleString("ru-RU"),"Одобренных кланов"),statTile(R.length.toLocaleString("ru-RU"),"На рассмотрении"),statTile(_.toLocaleString("ru-RU"),"Всего участников в кланах"),statTile($.length?(_/$.length).toFixed(1):"0","Среднее число участников")].join("");const j=w.map(([e,t])=>[e,t,Object.keys(t.members||{}).length]).sort((e,t)=>t[2]-e[2]).slice(0,10);document.getElementById("stats-clans-top").innerHTML=j.length?j.map(([e,t,n])=>`<div class="list-row"><span>${escapeHtml(t.emoji||"🛡")} ${escapeHtml(t.name||e)}</span><span class="meta">${n} уч.</span></div>`).join(""):'<div class="admin-empty">Нет одобренных кланов</div>';const D=Object.entries(s);document.getElementById("stats-events-list").innerHTML=D.length?D.map(([e,t])=>{const n=isStatsEventLive(t);let a=0;t.badgeId&&(a=l.filter(([,e])=>e.badges&&e.badges[t.badgeId]).length);const o=l.filter(([,e])=>Object.values(e.multiplierTickets||{}).some(e=>e&&e.value===t.multiplier)).length,s=Math.max(a,t.multiplier?o:0);return`<div class="list-row"><span>${n?"🟢":"⚪"} ${escapeHtml(t.title||"Без названия")}</span><span class="meta">≈${s} участв.</span></div>`}).join(""):'<div class="admin-empty">Ивентов пока нет</div>'}const GH_OWNER="botsystemtioxsit",GH_DATA_REPO="battle-data-admin-bot",tokenInput=document.getElementById("gh-token-input"),tokenSaveBtn=document.getElementById("gh-token-save-btn"),tokenLockBtn=document.getElementById("gh-token-lock-btn"),tokenSaveConfirm=document.getElementById("gh-token-save-confirm"),tokenLockedLine=document.getElementById("gh-token-locked-line"),tokenChangeBtn=document.getElementById("gh-token-change-btn"),tokenStatusEl=document.getElementById("gh-token-status");function saveGithubToken(){window.localStorage.setItem("battleDataGithubToken",tokenInput.value.trim()),tokenSaveConfirm.classList.add("show"),clearTimeout(saveGithubToken._t),saveGithubToken._t=setTimeout(()=>tokenSaveConfirm.classList.remove("show"),2e3)}function getGithubToken(){return tokenInput.value.trim()}function isTokenLocked(){return"true"===window.localStorage.getItem("battleDataTokenLocked")}function renderTokenLockUI(){isTokenLocked()?(tokenInput.disabled=!0,tokenInput.setAttribute("readonly","readonly"),tokenSaveBtn.style.display="none",tokenLockBtn.style.display="none",tokenLockedLine.style.display="flex"):(tokenInput.disabled=!1,tokenInput.removeAttribute("readonly"),tokenSaveBtn.style.display="",tokenLockBtn.style.display="",tokenLockedLine.style.display="none",tokenLockBtn.disabled=!tokenInput.value.trim())}tokenInput.value=window.localStorage.getItem("battleDataGithubToken")||"",tokenInput.addEventListener("input",saveGithubToken),tokenInput.addEventListener("change",saveGithubToken),tokenSaveBtn.addEventListener("click",saveGithubToken),tokenInput.addEventListener("input",()=>{isTokenLocked()||(tokenLockBtn.disabled=!tokenInput.value.trim())}),tokenLockBtn.addEventListener("click",()=>{tokenInput.value.trim()&&(window.localStorage.setItem("battleDataTokenLocked","true"),renderTokenLockUI(),tokenStatusEl.style.color="var(--gold)",tokenStatusEl.textContent="Токен закреплён.")});let tokenChangeReqPath=null,tokenChangeReqCb=null,tokenChangeReqTimeout=null;function stopWaitingForTokenChangeApproval(){tokenChangeReqPath&&tokenChangeReqCb&&db.ref(tokenChangeReqPath).off("value",tokenChangeReqCb),tokenChangeReqTimeout&&clearTimeout(tokenChangeReqTimeout),tokenChangeReqPath=null,tokenChangeReqCb=null,tokenChangeReqTimeout=null}tokenChangeBtn.addEventListener("click",()=>{if(!myTelegramId)return tokenStatusEl.style.color="var(--live)",void(tokenStatusEl.textContent="Не удалось определить аккаунт.");stopWaitingForTokenChangeApproval();const e=db.ref("users/"+myTelegramId+"/tokenChangeRequests").push(),t="users/"+myTelegramId+"/tokenChangeRequests/"+e.key;e.set({device:navigator.userAgent,requestedAt:Date.now(),status:"pending"}),tokenChangeBtn.disabled=!0,tokenStatusEl.style.color="var(--gold)",tokenStatusEl.textContent="Запрос отправлен. Открой эту же панель в Telegram, чтобы подтвердить.",tokenChangeReqPath=t,tokenChangeReqCb=db.ref(t).on("value",e=>{const n=e.val();n&&"pending"!==n.status&&("approved"===n.status?(db.ref(t).remove(),window.localStorage.removeItem("battleDataTokenLocked"),stopWaitingForTokenChangeApproval(),renderTokenLockUI(),tokenChangeBtn.disabled=!1,tokenStatusEl.style.color="var(--gold)",tokenStatusEl.textContent="Подтверждено — теперь можно изменить токен."):"denied"===n.status&&(db.ref(t).remove(),stopWaitingForTokenChangeApproval(),tokenChangeBtn.disabled=!1,tokenStatusEl.style.color="var(--live)",tokenStatusEl.textContent="Запрос отклонён."))}),tokenChangeReqTimeout=setTimeout(()=>{db.ref(t).once("value").then(e=>{"pending"===e.val()?.status&&db.ref(t).remove()}),stopWaitingForTokenChangeApproval(),tokenChangeBtn.disabled=!1,tokenStatusEl.style.color="var(--live)",tokenStatusEl.textContent="Время ожидания истекло, попробуй снова."},3e5)});let tokenRequestsListenerRef=null,tokenRequestsListenerCb=null;function attachTokenChangeRequestsListener(e){tgUser&&(tokenRequestsListenerRef&&tokenRequestsListenerCb&&tokenRequestsListenerRef.off("value",tokenRequestsListenerCb),tokenRequestsListenerRef=db.ref("users/"+e+"/tokenChangeRequests"),tokenRequestsListenerCb=tokenRequestsListenerRef.on("value",e=>{renderTokenChangeRequests(e.val()||{})}))}function renderTokenChangeRequests(e){const t=document.getElementById("gh-token-requests-card"),n=document.getElementById("gh-token-requests-list"),a=Object.entries(e).filter(([,e])=>e&&"pending"===e.status);if(!a.length)return t.style.display="none",void(n.innerHTML="");t.style.display="block",n.innerHTML=a.map(([e,t])=>`\n      <div class="list-row">\n        <span>${escapeHtml(t.device||"Неизвестное устройство")}<br><span class="meta">${new Date(t.requestedAt||0).toLocaleString("ru-RU")}</span></span>\n        <span class="row" style="margin:0;">\n          <button class="btn btn-gold" data-action="approve" data-id="${e}">Разрешить</button>\n          <button class="btn btn-live" data-action="deny" data-id="${e}">Отклонить</button>\n        </span>\n      </div>\n    `).join(""),n.querySelectorAll("button[data-action]").forEach(e=>{e.addEventListener("click",()=>{const t=e.dataset.id,n="approve"===e.dataset.action?"approved":"denied";db.ref("users/"+myTelegramId+"/tokenChangeRequests/"+t+"/status").set(n)})})}async function ghApi(e,t,n={}){const a=await fetch(`https://api.github.com${e}`,{...n,headers:{Authorization:`Bearer ${t}`,Accept:"application/vnd.github+json",...n.headers||{}}});if(!a.ok){const t=await a.text().catch(()=>"");throw new Error(`${e} -> ${a.status}: ${t}`)}return 204===a.status?null:a.json()}async function listBackups(e,t){const n=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_DATA_REPO}/contents/${e}?ref=main`,{headers:{Authorization:`Bearer ${t}`,Accept:"application/vnd.github+json"}});if(404===n.status)return[];if(!n.ok)throw new Error("GitHub API: "+n.status);return(await n.json()).filter(e=>"file"===e.type).map(e=>({name:e.name,size:e.size})).sort((e,t)=>t.name.localeCompare(e.name))}async function ghFetchRawFile(e,t){const n=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_DATA_REPO}/contents/${e}?ref=main`,{headers:{Authorization:`Bearer ${t}`,Accept:"application/vnd.github.raw+json"}});if(!n.ok)throw new Error(`Не удалось скачать ${e}: ${n.status}`);return n}function formatBackupSize(e){return e>1048576?(e/1048576).toFixed(1)+" МБ":e>1024?(e/1024).toFixed(0)+" КБ":e+" Б"}function renderBackupList(e,t,n){t?t.length?e.innerHTML=t.map(e=>`\n      <div class="list-row">\n        <span>${escapeHtml(e.name.replace(/\.(zip|json)$/,""))}</span>\n        <span class="meta">${formatBackupSize(e.size)}</span>\n      </div>\n    `).join(""):e.innerHTML='<div class="admin-empty" style="text-align:left; padding:0;">Снимков пока нет.</div>':e.innerHTML=`<div class="admin-empty" style="text-align:left; padding:0;">${escapeHtml(n)}</div>`}function fillBackupSelect(e,t,n){e.innerHTML=`<option value="">${n}</option>`+(t||[]).map(e=>`<option value="${e.name.replace(/\.(zip|json)$/,"")}">${e.name}</option>`).join("")}renderTokenLockUI();let codeBackupsCache={"index.html":[],"battle-admin-bot":[]},backupListsLoadedForToken=null;async function loadAllBackupLists(){if(!canManageRoles())return;const e=getGithubToken(),t=document.getElementById("list-code-index"),n=document.getElementById("list-code-admin"),a=document.getElementById("list-db");if(!e){const e="Впиши и сохрани GitHub-токен выше — без него список снимков не загрузить (battle-data-admin-bot приватный).";return renderBackupList(t,null,e),renderBackupList(n,null,e),void renderBackupList(a,null,e)}if(backupListsLoadedForToken!==e)try{const[o,s,l]=await Promise.all([listBackups("code-backups/index.html",e),listBackups("code-backups/battle-admin-bot",e),listBackups("db-snapshots",e)]);codeBackupsCache["index.html"]=o,codeBackupsCache["battle-admin-bot"]=s,backupListsLoadedForToken=e,renderBackupList(t,o),renderBackupList(n,s),renderBackupList(a,l),fillBackupSelect(document.getElementById("restore-db-select"),l,"Выбери дату снимка"),updateRestoreCodeSelect()}catch(e){console.error("Бэкапы: список",e);const o="Не удалось загрузить список: "+(e.message||e);renderBackupList(t,null,o),renderBackupList(n,null,o),renderBackupList(a,null,o)}}function updateRestoreCodeSelect(){const e=document.getElementById("restore-code-repo").value;fillBackupSelect(document.getElementById("restore-code-select"),codeBackupsCache[e]||[],"Выбери дату снимка")}document.getElementById("restore-code-repo").addEventListener("change",updateRestoreCodeSelect),document.getElementById("backup-now-btn").addEventListener("click",async()=>{if(!canManageRoles())return;const e=document.getElementById("backup-now-btn"),t=document.getElementById("backup-now-status"),n=getGithubToken();if(!n)return t.style.color="var(--live)",void(t.textContent="Сначала впиши GitHub-токен выше.");e.disabled=!0,e.textContent="Запускаем…",t.style.color="var(--muted)",t.textContent="";try{await Promise.all(["code-backup.yml","db-snapshot.yml"].map(e=>ghApi(`/repos/${GH_OWNER}/${GH_DATA_REPO}/actions/workflows/${e}/dispatches`,n,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ref:"main"})}))),t.style.color="var(--gold)",t.textContent="Запущено — новые снимки появятся в списках через 1–2 минуты."}catch(e){t.style.color="var(--live)",t.textContent="Ошибка: "+(e.message||e)}finally{e.disabled=!1,e.textContent="Сделать бэкап сейчас"}}),document.getElementById("restore-db-btn").addEventListener("click",async()=>{if(!canManageRoles())return;const e=document.getElementById("restore-db-btn"),t=document.getElementById("restore-db-status"),n=document.getElementById("restore-db-select").value,a=document.getElementById("restore-db-confirm").value.trim(),o=getGithubToken();if(!o)return t.style.color="var(--live)",void(t.textContent="Сначала впиши GitHub-токен выше (нужен, чтобы скачать снимок из приватного репозитория).");if(!n)return t.style.color="var(--live)",void(t.textContent="Выбери снимок.");if("ВОССТАНОВИТЬ"!==a)return t.style.color="var(--live)",void(t.textContent="Впиши слово ВОССТАНОВИТЬ для подтверждения.");e.disabled=!0,e.textContent="Восстанавливаем…",t.style.color="var(--muted)",t.textContent="Скачиваем снимок…";try{const e=await ghFetchRawFile(`db-snapshots/${n}.json`,o),a=await e.json();t.textContent="Записываем в базу…",await db.ref("/").set(a),t.style.color="var(--gold)",t.textContent=`База восстановлена до состояния на ${n}.`,document.getElementById("restore-db-confirm").value=""}catch(e){t.style.color="var(--live)",t.textContent="Ошибка: "+(e.message||e)}finally{e.disabled=!1,e.textContent="Восстановить базу"}}),document.getElementById("restore-code-btn").addEventListener("click",async()=>{if(!canManageRoles())return;const e=document.getElementById("restore-code-btn"),t=document.getElementById("restore-code-status"),n=document.getElementById("restore-code-repo").value,a=document.getElementById("restore-code-select").value,o=document.getElementById("restore-code-confirm").value.trim(),s=getGithubToken();if(!s)return t.style.color="var(--live)",void(t.textContent="Сначала впиши GitHub-токен.");if(!a)return t.style.color="var(--live)",void(t.textContent="Выбери снимок.");if("ВОССТАНОВИТЬ"!==o)return t.style.color="var(--live)",void(t.textContent="Впиши слово ВОССТАНОВИТЬ для подтверждения.");e.disabled=!0,e.textContent="Восстанавливаем…",t.style.color="var(--muted)",t.textContent="";try{const e=await ghFetchRawFile(`code-backups/${n}/${a}.zip`,s),o=await e.arrayBuffer(),l=await JSZip.loadAsync(o),r=Object.values(l.files).filter(e=>!e.dir);if(!r.length)throw new Error("Архив пуст.");t.textContent=`Загружаем файлы (0/${r.length})…`;const d=(await ghApi(`/repos/${GH_OWNER}/${n}/git/ref/heads/main`,s)).object.sha,i=[];let c=0;for(const e of r){const a=await e.async("base64"),o=await ghApi(`/repos/${GH_OWNER}/${n}/git/blobs`,s,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({content:a,encoding:"base64"})});i.push({path:e.name,mode:"100644",type:"blob",sha:o.sha}),c+=1,t.textContent=`Загружаем файлы (${c}/${r.length})…`}t.textContent="Собираем коммит…";const u=await ghApi(`/repos/${GH_OWNER}/${n}/git/trees`,s,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tree:i})}),m=await ghApi(`/repos/${GH_OWNER}/${n}/git/commits`,s,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:`Восстановление из бэкапа battle-data-admin-bot за ${a}`,tree:u.sha,parents:[d]})});await ghApi(`/repos/${GH_OWNER}/${n}/git/refs/heads/main`,s,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({sha:m.sha,force:!1})}),t.style.color="var(--gold)",t.textContent=`Репозиторий ${n} восстановлен до состояния на ${a}.`,document.getElementById("restore-code-confirm").value=""}catch(e){t.style.color="var(--live)",t.textContent="Ошибка: "+(e.message||e)}finally{e.disabled=!1,e.textContent="Восстановить код"}});let dangerZoneVerifiedRole=null,dangerZoneVerifiedCanManage=!1;function openDangerZone(){dangerZoneVerifiedRole=null,dangerZoneVerifiedCanManage=!1,document.getElementById("danger-checking").style.display="block",document.getElementById("danger-denied").style.display="none",document.getElementById("danger-allowed").style.display="none",db.ref("users/"+myTelegramId).once("value").then(e=>{const t=e.val(),n=t?.role||"user",a=resolvePermissions(t);if(dangerZoneVerifiedRole=n,dangerZoneVerifiedCanManage=!!a.danger,document.getElementById("danger-checking").style.display="none",dangerZoneVerifiedCanManage){document.getElementById("danger-allowed").style.display="block",resetDangerZoneForm();const e="superadmin"===n;document.getElementById("danger-reset-controls").style.display=e?"block":"none",document.getElementById("danger-reset-locked-note").style.display=e?"none":"block",document.getElementById("danger-emergency-controls").style.display=e?"block":"none",document.getElementById("danger-emergency-locked-note").style.display=e?"none":"block"}else document.getElementById("danger-denied-role").textContent=ROLE_LABELS[n]||n,document.getElementById("danger-denied").style.display="block"}).catch(e=>{console.error(e),document.getElementById("danger-checking").style.display="none",document.getElementById("danger-denied-role").textContent="не удалось проверить",document.getElementById("danger-denied").style.display="block"})}function resetDangerZoneForm(){document.getElementById("danger-secret-input").value="",document.getElementById("danger-secret-set-input").value="",document.getElementById("danger-secret-save-result").style.display="none",document.getElementById("danger-secret-missing").style.display="none",document.getElementById("btn-danger-reset").disabled=!1,document.getElementById("btn-danger-reset").textContent="Подтвердить и сбросить всё",document.getElementById("danger-reset-result").style.display="none",document.getElementById("danger-badge-grant-result").style.display="none",document.getElementById("danger-delete-guests-result").style.display="none",(badgeDefsReadyPromise||Promise.resolve()).then(()=>{document.getElementById("danger-badge-select").innerHTML=Object.entries(badgeDefsCache).map(([e,t])=>`<option value="${e}">${escapeHtml(t.emoji||"🏅")} ${escapeHtml(t.label||e)}</option>`).join("")}),loadPlatformModeState()}function loadPlatformModeState(){Promise.all([db.ref("config/maintenanceMode").once("value"),db.ref("config/maintenanceMessage").once("value"),db.ref("config/emergencyLockdown").once("value"),db.ref("config/closedBeta").once("value")]).then(([e,t,n,a])=>{document.getElementById("toggle-maintenance").classList.toggle("on",!!e.val()),document.getElementById("maintenance-message-input").value=t.val()||"",document.getElementById("toggle-emergency").classList.toggle("on",!!n.val()),document.getElementById("toggle-closed-beta").classList.toggle("on",!!a.val())}).catch(e=>console.error("Режимы платформы: загрузка",e))}document.getElementById("btn-danger-secret-save").addEventListener("click",async()=>{if("superadmin"!==dangerZoneVerifiedRole)return;const e=document.getElementById("danger-secret-set-input"),t=e.value.trim();if(!t)return void e.focus();const n=document.getElementById("btn-danger-secret-save"),a=document.getElementById("danger-secret-save-result");n.disabled=!0;try{await db.ref("config/resetSecret").set(t),logAction("reset_secret_changed","—","—","—","Пароль сброса задан/изменён через панель"),e.value="",a.textContent="Пароль сохранён — сработает один раз, дальше вводи его в поле «Пароль сброса» ниже.",a.style.display="block",document.getElementById("danger-secret-missing").style.display="none"}catch(e){console.error(e),alert("Не удалось сохранить пароль: "+(e.message||e))}finally{n.disabled=!1}}),document.getElementById("btn-danger-reset").addEventListener("click",async()=>{if("superadmin"!==dangerZoneVerifiedRole)return;const e=document.getElementById("danger-secret-input").value,t=document.getElementById("btn-danger-reset"),n=document.getElementById("danger-reset-result");document.getElementById("danger-secret-missing").style.display="none",t.disabled=!0,t.textContent="Проверяю пароль…",n.style.display="none";try{const a=(await db.ref("config/resetSecret").once("value")).val();if(!a)return document.getElementById("danger-secret-missing").style.display="block",t.textContent="Подтвердить и сбросить всё",void(t.disabled=!1);if(!e||e!==a)return alert("Неверный пароль сброса."),t.textContent="Подтвердить и сбросить всё",void(t.disabled=!1);t.textContent="Сбрасываю…";const o=(await db.ref("users").once("value")).val()||{},s=Object.keys(o),l={matches:null,battles:null,queue:null,refereeQueue:null,"config/resetSecret":null};s.forEach(e=>{l["users/"+e+"/points"]=1e3,l["users/"+e+"/monthlyPoints"]=0,l["users/"+e+"/monthlyPeriod"]=null,l["users/"+e+"/starsBalance"]=0,l["users/"+e+"/stats"]={battles:0,wins:0,losses:0,draws:0,refereeBattles:0,audienceLikes:0}}),await db.ref().update(l),logAction("full_reset","—","Все игроки","—",`Сброшены очки/статистика у ${s.length} игроков; удалены matches/battles/queue/refereeQueue`),n.textContent=`Готово — сброшено ${s.length} игроков, вся история боёв удалена. Пароль сброса одноразовый — уже стёрт, для следующего раза задай новый.`,n.style.display="block",document.getElementById("danger-secret-input").value="",foundUserKey&&db.ref("users/"+foundUserKey).once("value").then(e=>{e.exists()&&openUserDetail(foundUserKey,e.val())})}catch(e){console.error(e),alert("Не удалось выполнить сброс: "+(e.message||e))}finally{t.textContent="Подтвердить и сбросить всё",t.disabled=!1}}),document.getElementById("btn-danger-badge-grant").addEventListener("click",async()=>{if(!dangerZoneVerifiedCanManage)return;const e=document.getElementById("danger-badge-select").value;if(!e)return;const t=badgeDefsCache[e],n=t?.label||e;if(!confirm(`Выдать значок "${n}" абсолютно всем игрокам?`))return;const a=document.getElementById("btn-danger-badge-grant"),o=document.getElementById("danger-badge-grant-result");a.disabled=!0;try{const t=(await db.ref("users").once("value")).val()||{},a=Object.keys(t),s={};a.forEach(t=>{s["users/"+t+"/badges/"+e]=!0}),await db.ref().update(s),logAction("badge_mass_given","—","Все игроки","—",`Значок "${n}" принудительно выдан ${a.length} игрокам`),o.textContent=`Готово — значок "${n}" выдан ${a.length} игрокам.`,o.style.display="block",foundUserKey&&db.ref("users/"+foundUserKey).once("value").then(e=>{e.exists()&&openUserDetail(foundUserKey,e.val())})}catch(e){console.error(e),alert("Не удалось выдать значок: "+(e.message||e))}finally{a.disabled=!1}}),document.getElementById("btn-danger-delete-guests").addEventListener("click",async()=>{if(!dangerZoneVerifiedCanManage)return;const e=document.getElementById("btn-danger-delete-guests"),t=document.getElementById("danger-delete-guests-result");e.disabled=!0;try{const e=(await db.ref("users").once("value")).val()||{},n=Object.keys(e).filter(e=>e.startsWith("guest_"));if(!n.length)return t.textContent="Гостевых аккаунтов сейчас нет.",void(t.style.display="block");if(!confirm(`Удалить ${n.length} гостевых аккаунтов?`))return;const a={};n.forEach(e=>{a["users/"+e]=null,a["presence/"+e]=null}),await db.ref().update(a),logAction("guests_deleted","—","Гостевые аккаунты","—",`Удалено ${n.length} гостевых аккаунтов`),t.textContent=`Готово — удалено ${n.length} гостевых аккаунтов.`,t.style.display="block",loadUserList("none"!==userListWrap.style.display)}catch(e){console.error(e),alert("Не удалось удалить гостей: "+(e.message||e))}finally{e.disabled=!1}}),document.getElementById("toggle-maintenance").addEventListener("click",()=>{if(!dangerZoneVerifiedCanManage)return;const e=document.getElementById("toggle-maintenance"),t=!e.classList.contains("on");t&&!confirm("Включить режим обслуживания? Обычные игроки не смогут пользоваться сайтом, пока его не выключишь.")||db.ref("config/maintenanceMode").set(t).then(()=>{e.classList.toggle("on",t),logAction("maintenance_toggled","—","—","—",t?"Включён":"Выключен")}).catch(e=>{console.error(e),alert("Не удалось изменить режим обслуживания: "+(e.message||e))})}),document.getElementById("btn-save-maintenance-message").addEventListener("click",()=>{if(!dangerZoneVerifiedCanManage)return;const e=document.getElementById("maintenance-message-input").value.trim();db.ref("config/maintenanceMessage").set(e||null).then(()=>{logAction("maintenance_message_changed","—","—","—",e||"(очищено)")}).catch(e=>{console.error(e),alert("Не удалось сохранить сообщение: "+(e.message||e))})}),document.getElementById("toggle-closed-beta").addEventListener("click",()=>{if(!dangerZoneVerifiedCanManage)return;const e=document.getElementById("toggle-closed-beta"),t=!e.classList.contains("on");t&&!confirm("Включить закрытый бета-тест? Новые визитёры без аккаунта увидят экран заявки вместо мгновенного входа.")||db.ref("config/closedBeta").set(t).then(()=>{e.classList.toggle("on",t),logAction("closed_beta_toggled","—","—","—",t?"Включён":"Выключен")}).catch(e=>{console.error(e),alert("Не удалось изменить режим закрытого бета-теста: "+(e.message||e))})}),document.getElementById("toggle-emergency").addEventListener("click",()=>{if("superadmin"!==dangerZoneVerifiedRole)return;const e=document.getElementById("toggle-emergency"),t=!e.classList.contains("on");confirm(t?"Включить АВАРИЙНЫЙ РЕЖИМ? Это закроет сайт и эту панель для ВСЕХ, включая Админов и Модераторов. Продолжить?":"Выключить аварийный режим и вернуть доступ всем?")&&db.ref("config/emergencyLockdown").set(t).then(()=>{e.classList.toggle("on",t),logAction("emergency_lockdown_toggled","—","—","—",t?"Включён":"Выключен")}).catch(e=>{console.error(e),alert("Не удалось изменить аварийный режим: "+(e.message||e))})});</script>
+</body>
+</html>
